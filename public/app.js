@@ -38,6 +38,7 @@
     tab: 'master',
     adult: adultModes.includes(savedUI.adult) ? savedUI.adult : 'all',
     server: false,
+    signerCompatible: false,
     keyId: '',
     serverCovers: 0,
     serverCoverTotal: 0,
@@ -497,19 +498,23 @@
       if (!r.ok) throw 0;
       const j = await r.json();
       state.server = !!j.ok;
+      state.signerCompatible = Number(j.userListSchema) >= 2;
       state.keyId = j.keyId || '';
       state.serverCovers = Number(j.covers?.cached) || 0;
       state.serverCoverTotal = Number(j.covers?.total) || masterItems.length;
       state.serverCoverRunning = !!j.covers?.running;
-      $('#securityState').classList.add('ok');
-      $('#securityState').innerHTML =
-        `<b>SECURE USERLIST // UWL1</b><span>Ed25519 signing is ready · key ${esc(state.keyId)}</span>`;
+      $('#securityState').classList.toggle('ok', state.signerCompatible);
+      $('#securityState').classList.toggle('bad', !state.signerCompatible);
+      $('#securityState').innerHTML = state.signerCompatible
+        ? `<b>SECURE USERLIST // UWL1</b><span>Ed25519 signing is ready · key ${esc(state.keyId)}</span>`
+        : '<b>SERVER RESTART REQUIRED</b><span>The page is newer than the running server. Restart npm start, then reload.</span>';
       updateStats();
       queueMetadata(filteredMaster().slice(0, state.visible), { priority: true });
       pumpMetadata();
       hydrateMissingCustomMetadata();
     } catch {
       state.server = false;
+      state.signerCompatible = false;
       $('#securityState').classList.add('bad');
       $('#securityState').innerHTML =
         '<b>USERLIST SIGNING OFFLINE</b><span>Start the included server to create or verify signed UserList codes.</span>';
@@ -560,6 +565,10 @@
   async function generateUserList() {
     if (!state.server) {
       toast('Secure signer is offline');
+      return;
+    }
+    if (!state.signerCompatible) {
+      toast('Restart the included server, then reload');
       return;
     }
     const opinionEntries = Object.entries(myOpinions)
@@ -631,6 +640,11 @@
     if (!state.server) {
       out.classList.add('bad');
       out.textContent = 'Signature service is offline.';
+      return;
+    }
+    if (!state.signerCompatible) {
+      out.classList.add('bad');
+      out.textContent = 'Restart the included server, reload the page and try again.';
       return;
     }
     $('#importCodeBtn').disabled = true;

@@ -18,6 +18,7 @@ const PRIVATE = join(__dirname, '.userlist-keys');
 const CACHE_DIR = join(__dirname, '.cache');
 const COVER_DIR = join(__dirname, 'covers');
 const PORT = Number(process.env.PORT || 8787);
+const USERLIST_SCHEMA = 2;
 const MAX_BODY = 1024 * 1024;
 const META_TTL = 1000 * 60 * 60 * 24 * 30;
 const MAX_COVER_BYTES = 10 * 1024 * 1024;
@@ -886,6 +887,7 @@ export const server = http.createServer(async (req, res) => {
       return send(res, 200, {
         ok: true,
         format: 'UWL1',
+        userListSchema: USERLIST_SCHEMA,
         keyId: KEY_ID,
         artwork: warmState,
         covers: {

@@ -31,6 +31,7 @@ test('health endpoint reports a ready signing service', async () => {
   assert.equal(response.status, 200);
   assert.equal(body.ok, true);
   assert.equal(body.format, 'UWL1');
+  assert.equal(body.userListSchema, 2);
   assert.match(body.keyId, /^[a-f0-9]{16}$/);
 });
 
