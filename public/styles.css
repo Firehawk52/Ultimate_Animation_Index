@@ -1476,8 +1476,11 @@ body:after {
 }
 .toast {
   position: fixed;
+  inset: auto 24px 24px auto;
   right: 24px;
   bottom: 24px;
+  margin: 0;
+  border: 0;
   z-index: 100;
   background: var(--ink);
   color: #090a0e;
@@ -1836,6 +1839,7 @@ body:after {
     display: none;
   }
   .toast {
+    inset: auto 10px 76px 10px;
     left: 10px;
     right: 10px;
     bottom: 76px;

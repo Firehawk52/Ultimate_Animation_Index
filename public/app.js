@@ -1348,9 +1348,16 @@
   function toast(msg) {
     const t = $('#toast');
     t.textContent = msg;
+    if (typeof t.showPopover === 'function' && !t.matches(':popover-open')) t.showPopover();
     t.classList.add('show');
     clearTimeout(toast.t);
-    toast.t = setTimeout(() => t.classList.remove('show'), 2100);
+    clearTimeout(toast.hide);
+    toast.t = setTimeout(() => {
+      t.classList.remove('show');
+      toast.hide = setTimeout(() => {
+        if (typeof t.hidePopover === 'function' && t.matches(':popover-open')) t.hidePopover();
+      }, 220);
+    }, 2100);
   }
   function randomPick() {
     const a = filteredMaster();
