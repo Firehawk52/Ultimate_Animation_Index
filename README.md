@@ -196,7 +196,8 @@ The catalog works without live metadata. The server looks up covers and public m
 TVmaze and Wikipedia. Custom titles are matched conservatively across these providers; the user's title is never
 silently replaced by a provider result. When available, provider tags, genres and age classifications are also
 converted into editable 0–5 content-rating estimates. These estimates are deliberately conservative and should
-be reviewed by the user before sharing a UserList.
+be reviewed by the user before sharing a UserList. A custom title can be removed from its detail dialog with a
+two-step confirmation; its associated local progress, opinion, favorite and cached metadata are removed with it.
 
 When a cover is found, the server downloads it once and stores it locally in:
 

@@ -805,7 +805,7 @@
     if (format.includes('western film')) return ['wiki', 'tvmaze', 'anilist'];
     if (/ova|ona|donghua|hentai/.test(format) || asian) return ['anilist', 'wiki', 'tvmaze'];
     if (format.includes('series')) return ['tvmaze', 'anilist', 'wiki'];
-    return ['wiki', 'anilist', 'tvmaze'];
+    return ['anilist', 'wiki', 'tvmaze'];
   }
 
   function metadataMatchesTitle(title, data, year = 0) {
@@ -835,19 +835,35 @@
     );
   }
 
+  function metadataCompleteness(data) {
+    if (!data) return 0;
+    let score = 0;
+    if (data.cover) score += 4;
+    if (data.description) score += 2;
+    if (Array.isArray(data.genres) && data.genres.length) score += 2;
+    if (data.year) score += 1;
+    if (data.studio) score += 1;
+    if (data.content && !contentIsEmpty(data.content)) score += 1;
+    return score;
+  }
+
   async function findCustomMetadata(title, type, origin, year = 0) {
     if (!state.server || NO_META) return null;
+    let best = null;
     for (const kind of customMetadataKinds(type, origin)) {
       try {
         const response = await fetch(
           `/api/resolve?kind=${encodeURIComponent(kind)}&title=${encodeURIComponent(title)}`,
         );
         const result = await response.json();
-        if (response.ok && result.ok && metadataMatchesTitle(title, result.data, year))
-          return { kind, data: result.data };
+        if (response.ok && result.ok && metadataMatchesTitle(title, result.data, year)) {
+          const candidate = { kind, data: result.data, score: metadataCompleteness(result.data) };
+          if (!best || candidate.score > best.score) best = candidate;
+          if (candidate.score >= 8) return candidate;
+        }
       } catch {}
     }
-    return null;
+    return best;
   }
 
   function applyResolvedCustomMetadata(x, match) {
@@ -870,7 +886,7 @@
 
   async function refreshCustomMetadata(x, { force = false, silent = false } = {}) {
     if (!x?.custom) return false;
-    if (!force && metaFresh(x.id) && meta[x.id]?.data?.content) return true;
+    if (!force && metaFresh(x.id) && metadataCompleteness(meta[x.id]?.data) >= 6) return true;
     const match = await findCustomMetadata(x.lookupTitle || x.title, x.type, x.origin, x.year);
     if (!match) {
       if (!silent) toast('No reliable metadata match found');
@@ -885,7 +901,7 @@
   async function hydrateMissingCustomMetadata() {
     for (const x of customTitles) {
       if (!state.server) return;
-      if (!metaFresh(x.id) || (contentIsEmpty(x.content) && !meta[x.id]?.data?.content))
+      if (!metaFresh(x.id) || metadataCompleteness(meta[x.id]?.data) < 6)
         await refreshCustomMetadata(x, { silent: true });
     }
   }
@@ -1064,6 +1080,33 @@
     return lookupChanged;
   }
 
+  function removeCustomTitle(x) {
+    if (!x?.custom) return;
+    customTitles = customTitles.filter((title) => title.id !== x.id);
+    delete progress[x.id];
+    delete myOpinions[x.id];
+    delete favorites[x.id];
+    delete meta[x.id];
+    metaQueued.delete(x.id);
+    for (let index = metaQueue.length - 1; index >= 0; index--) {
+      if (metaQueue[index]?.id === x.id) metaQueue.splice(index, 1);
+    }
+    for (const source of Object.values(sources)) {
+      if (source.opinions) delete source.opinions[x.id];
+      if (Array.isArray(source.titleIds)) source.titleIds = source.titleIds.filter((id) => id !== x.id);
+    }
+    save(STORE.custom, customTitles);
+    save(STORE.progress, progress);
+    save(STORE.opinions, myOpinions);
+    save(STORE.favorites, favorites);
+    save(STORE.meta, meta);
+    save(STORE.sources, sources);
+    populateFilters();
+    $('#detailDialog').close();
+    renderAll();
+    toast(`Removed “${x.title}”`);
+  }
+
   // Detail dialog and personal progress
   function openDetail(id) {
     const x = itemById(id);
@@ -1084,7 +1127,7 @@
       sc.overall ? `Overall ${sc.overall}` : '',
     ].filter(Boolean);
     $('#dialogBody').innerHTML =
-      `<div class="detail-hero">${bg ? `<img class="detail-bg" src="${esc(bg)}" alt="">` : ''}<div class="detail-heading"><div class="kicker">${x.rank ? `MASTER RANK #${String(x.rank).padStart(3, '0')}` : 'CUSTOM ADDITION'} // ${esc(x.tier || '')}</div><h2>${esc(x.title)}</h2></div></div><div class="detail-content"><div class="detail-facts">${facts.map((f) => `<span class="fact">${esc(f)}</span>`).join('')}</div><div class="detail-grid"><div>${m.description ? `<h4>Synopsis</h4><p>${esc(m.description)}</p>` : '<p class="metadata-wait">Synopsis will appear when metadata is available.</p>'}${x.watch_note ? `<div class="callout"><h4>Watch note</h4><p>${esc(x.watch_note)}</p></div>` : ''}${x.caveat ? `<div class="callout"><h4>Worth knowing</h4><p>${esc(x.caveat)}</p></div>` : ''}${m.siteUrl ? `<a class="external-link" href="${esc(m.siteUrl)}" target="_blank" rel="noopener">OPEN SOURCE ↗</a>` : ''}<h4>Content</h4>${contentGuide(x, false)}${x.custom ? customEditorHTML(x) : ''}${ops.length ? `<h4>Imported opinions</h4><div class="source-opinion-list">${ops.map((o) => `<div class="source-opinion"><b>${esc(o.label)}</b><span class="${o.verdict === 'recommend' ? 'yes' : 'no'}">${o.verdict === 'recommend' ? 'RECOMMENDED' : 'NOT RECOMMENDED'}</span></div>`).join('')}</div>` : ''}</div><aside><div class="user-edit"><button id="modalFavorite" class="favorite-detail ${isFavorite(id) ? 'active' : ''}" type="button">${isFavorite(id) ? '♥ FAVORITE' : '♡ ADD TO FAVORITES'}</button><label>MY RECOMMENDATION</label><div class="verdict-row"><button class="verdict-btn rec ${verdict === 'recommend' ? 'active' : ''}" data-v="recommend">RECOMMEND</button><button class="verdict-btn no ${verdict === 'avoid' ? 'active' : ''}" data-v="avoid">DON'T RECOMMEND</button><button class="verdict-btn neutral ${!verdict ? 'active' : ''}" data-v="">NEUTRAL</button></div><label>WATCH STATUS</label><select id="modalStatus">${['Not started', 'Watching', 'Completed', 'On hold', 'Dropped'].map((s) => `<option ${p.status === s ? 'selected' : ''}>${s}</option>`).join('')}</select><label>MY RATING /10</label><input id="modalRating" type="number" min="0" max="10" step="0.5" value="${p.rating || ''}" placeholder="Unrated"><label>PRIVATE NOTE</label><textarea id="modalNote" maxlength="2000">${esc(p.note || '')}</textarea><button class="slash-button hot wide" id="saveDetail">${x.custom ? 'SAVE TITLE + LOCAL DATA' : 'SAVE LOCAL DATA'}</button></div></aside></div></div>`;
+      `<div class="detail-hero">${bg ? `<img class="detail-bg" src="${esc(bg)}" alt="">` : ''}<div class="detail-heading"><div class="kicker">${x.rank ? `MASTER RANK #${String(x.rank).padStart(3, '0')}` : 'CUSTOM ADDITION'} // ${esc(x.tier || '')}</div><h2>${esc(x.title)}</h2></div></div><div class="detail-content"><div class="detail-facts">${facts.map((f) => `<span class="fact">${esc(f)}</span>`).join('')}</div><div class="detail-grid"><div>${m.description ? `<h4>Synopsis</h4><p>${esc(m.description)}</p>` : '<p class="metadata-wait">Synopsis will appear when metadata is available.</p>'}${x.watch_note ? `<div class="callout"><h4>Watch note</h4><p>${esc(x.watch_note)}</p></div>` : ''}${x.caveat ? `<div class="callout"><h4>Worth knowing</h4><p>${esc(x.caveat)}</p></div>` : ''}${m.siteUrl ? `<a class="external-link" href="${esc(m.siteUrl)}" target="_blank" rel="noopener">OPEN SOURCE ↗</a>` : ''}<h4>Content</h4>${contentGuide(x, false)}${x.custom ? customEditorHTML(x) : ''}${ops.length ? `<h4>Imported opinions</h4><div class="source-opinion-list">${ops.map((o) => `<div class="source-opinion"><b>${esc(o.label)}</b><span class="${o.verdict === 'recommend' ? 'yes' : 'no'}">${o.verdict === 'recommend' ? 'RECOMMENDED' : 'NOT RECOMMENDED'}</span></div>`).join('')}</div>` : ''}</div><aside><div class="user-edit"><button id="modalFavorite" class="favorite-detail ${isFavorite(id) ? 'active' : ''}" type="button">${isFavorite(id) ? '♥ FAVORITE' : '♡ ADD TO FAVORITES'}</button><label>MY RECOMMENDATION</label><div class="verdict-row"><button class="verdict-btn rec ${verdict === 'recommend' ? 'active' : ''}" data-v="recommend">RECOMMEND</button><button class="verdict-btn no ${verdict === 'avoid' ? 'active' : ''}" data-v="avoid">DON'T RECOMMEND</button><button class="verdict-btn neutral ${!verdict ? 'active' : ''}" data-v="">NEUTRAL</button></div><label>WATCH STATUS</label><select id="modalStatus">${['Not started', 'Watching', 'Completed', 'On hold', 'Dropped'].map((s) => `<option ${p.status === s ? 'selected' : ''}>${s}</option>`).join('')}</select><label>MY RATING /10</label><input id="modalRating" type="number" min="0" max="10" step="0.5" value="${p.rating || ''}" placeholder="Unrated"><label>PRIVATE NOTE</label><textarea id="modalNote" maxlength="2000">${esc(p.note || '')}</textarea><button class="slash-button hot wide" id="saveDetail">${x.custom ? 'SAVE TITLE + LOCAL DATA' : 'SAVE LOCAL DATA'}</button>${x.custom ? '<button class="danger-button wide" id="removeCustomTitle" type="button">REMOVE CUSTOM TITLE</button>' : ''}</div></aside></div></div>`;
     $('#modalFavorite').onclick = () => {
       toggleFavorite(id);
       const b = $('#modalFavorite');
@@ -1112,6 +1155,24 @@
           button.disabled = false;
           button.textContent = 'FIND MISSING METADATA';
         }
+      };
+      let removeArmed = false;
+      let removeTimer;
+      $('#removeCustomTitle').onclick = () => {
+        const button = $('#removeCustomTitle');
+        if (removeArmed) {
+          clearTimeout(removeTimer);
+          removeCustomTitle(x);
+          return;
+        }
+        removeArmed = true;
+        button.classList.add('confirm');
+        button.textContent = 'CONFIRM REMOVE TITLE';
+        removeTimer = setTimeout(() => {
+          removeArmed = false;
+          button.classList.remove('confirm');
+          button.textContent = 'REMOVE CUSTOM TITLE';
+        }, 5000);
       };
     }
     $('#saveDetail').onclick = () => {

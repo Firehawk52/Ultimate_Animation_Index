@@ -1153,30 +1153,6 @@ body:after {
   color: #ff879f;
   font: 800 10px var(--display);
 }
-.security-notes {
-  margin-top: 14px;
-  border: 1px solid var(--line);
-  padding: 22px;
-  background: #0b0d12;
-}
-.security-notes h3 {
-  font: 800 27px var(--display);
-  margin: 0 0 14px;
-}
-.security-cols {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 18px;
-}
-.security-cols p {
-  font-size: 11px;
-  line-height: 1.55;
-  color: #9da5b3;
-  margin: 0;
-}
-.security-cols b {
-  color: var(--ink);
-}
 .detail-dialog,
 .collection-dialog {
   width: min(1040px, 94vw);
@@ -1381,6 +1357,23 @@ body:after {
   border-color: var(--hot);
   color: white;
 }
+.danger-button {
+  width: 100%;
+  min-height: 42px;
+  margin-top: 10px;
+  border: 1px solid #743747;
+  background: transparent;
+  color: #ff91a9;
+  font: 800 12px var(--display);
+  letter-spacing: 0.08em;
+  transition: 0.15s;
+}
+.danger-button:hover,
+.danger-button.confirm {
+  border-color: #ff5379;
+  background: #3a1520;
+  color: #fff;
+}
 .metadata-wait {
   color: var(--muted) !important;
   font-style: italic;
@@ -1538,9 +1531,6 @@ body:after {
     grid-column: span 2;
   }
   .collection-grid {
-    grid-template-columns: repeat(2, 1fr);
-  }
-  .security-cols {
     grid-template-columns: repeat(2, 1fr);
   }
 }
@@ -1714,9 +1704,6 @@ body:after {
     grid-template-columns: 1fr;
   }
   .userlist-summary {
-    grid-template-columns: 1fr;
-  }
-  .security-cols {
     grid-template-columns: 1fr;
   }
   .field-row {
