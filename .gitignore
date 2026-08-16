@@ -1,0 +1,10 @@
+.userlist-keys/
+.cache/
+node_modules/
+covers/
+public/catalog.json
+__pycache__/
+*.pyc
+.DS_Store
+Thumbs.db
+*.log

@@ -1,0 +1,30 @@
+{
+  "name": "ultimate-animation-index",
+  "version": "4.2.0",
+  "description": "A self-hosted, ranked watchlist for anime and animation from around the world.",
+  "homepage": "https://github.com/Firehawk52/Ultimate_Animation_Index#readme",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Firehawk52/Ultimate_Animation_Index.git"
+  },
+  "bugs": {
+    "url": "https://github.com/Firehawk52/Ultimate_Animation_Index/issues"
+  },
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "start": "node scripts/start.mjs",
+    "build:catalog": "node scripts/build-catalog.mjs",
+    "check": "node --check server.mjs && node --check public/app.js && node --check scripts/start.mjs && node --check scripts/build-catalog.mjs",
+    "format": "prettier --write server.mjs scripts/*.mjs public/app.js public/index.html public/styles.css test/server.test.mjs package.json docker-compose.yml README.md CONTRIBUTING.md SECURITY.md .github/workflows/ci.yml",
+    "format:check": "prettier --check server.mjs scripts/*.mjs public/app.js public/index.html public/styles.css test/server.test.mjs package.json docker-compose.yml README.md CONTRIBUTING.md SECURITY.md .github/workflows/ci.yml",
+    "pretest": "npm run build:catalog",
+    "test": "node --test"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "devDependencies": {
+    "prettier": "3.9.6"
+  }
+}

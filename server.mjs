@@ -1,0 +1,844 @@
+import http from 'node:http';
+import { readFile, writeFile, mkdir, stat } from 'node:fs/promises';
+import { existsSync, readFileSync, writeFileSync, mkdirSync, readdirSync } from 'node:fs';
+import { extname, join, normalize, resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
+import {
+  generateKeyPairSync,
+  createHash,
+  sign as cryptoSign,
+  verify as cryptoVerify,
+  createPublicKey,
+} from 'node:crypto';
+
+// Runtime paths and resource limits
+const __dirname = fileURLToPath(new URL('.', import.meta.url));
+const PUBLIC = join(__dirname, 'public');
+const PRIVATE = join(__dirname, '.userlist-keys');
+const CACHE_DIR = join(__dirname, '.cache');
+const COVER_DIR = join(__dirname, 'covers');
+const PORT = Number(process.env.PORT || 8787);
+const MAX_BODY = 256 * 1024;
+const META_TTL = 1000 * 60 * 60 * 24 * 30;
+const MAX_COVER_BYTES = 10 * 1024 * 1024;
+
+mkdirSync(PRIVATE, { recursive: true });
+mkdirSync(CACHE_DIR, { recursive: true });
+mkdirSync(COVER_DIR, { recursive: true });
+
+// Installation-specific UserList signing identity
+const privPath = join(PRIVATE, 'ed25519-private.pem');
+const pubPath = join(PRIVATE, 'ed25519-public.pem');
+if (!existsSync(privPath) || !existsSync(pubPath)) {
+  const { privateKey, publicKey } = generateKeyPairSync('ed25519');
+  writeFileSync(privPath, privateKey.export({ type: 'pkcs8', format: 'pem' }), { mode: 0o600 });
+  writeFileSync(pubPath, publicKey.export({ type: 'spki', format: 'pem' }), { mode: 0o644 });
+}
+const PRIVATE_KEY = readFileSync(privPath, 'utf8');
+const PUBLIC_KEY = readFileSync(pubPath, 'utf8');
+const publicDer = createPublicKey(PUBLIC_KEY).export({ type: 'spki', format: 'der' });
+const KEY_ID = createHash('sha256').update(publicDer).digest('hex').slice(0, 16);
+
+// Persistent metadata cache
+const cachePath = join(CACHE_DIR, 'metadata.json');
+let metadataCache = {};
+try {
+  metadataCache = JSON.parse(readFileSync(cachePath, 'utf8'));
+} catch {}
+let cacheTimer = null;
+function persistCacheSoon() {
+  clearTimeout(cacheTimer);
+  cacheTimer = setTimeout(() => {
+    try {
+      writeFileSync(cachePath, JSON.stringify(metadataCache));
+    } catch {}
+  }, 500);
+}
+
+// Shared HTTP helpers and security headers
+function send(res, status, body, type = 'application/json; charset=utf-8') {
+  res.writeHead(status, {
+    'Content-Type': type,
+    'Cache-Control': type.startsWith('text/html') ? 'no-cache' : 'no-store',
+    'X-Content-Type-Options': 'nosniff',
+    'Referrer-Policy': 'no-referrer',
+    'X-Frame-Options': 'DENY',
+    'Permissions-Policy': 'camera=(), microphone=(), geolocation=()',
+    'Content-Security-Policy':
+      "default-src 'self'; img-src 'self' data:; style-src 'self' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com data:; connect-src 'self'; script-src 'self'; object-src 'none'; base-uri 'none'; form-action 'self'; frame-ancestors 'none'",
+  });
+  res.end(typeof body === 'string' ? body : JSON.stringify(body));
+}
+
+async function readBody(req) {
+  let total = 0;
+  const chunks = [];
+  for await (const chunk of req) {
+    total += chunk.length;
+    if (total > MAX_BODY) throw new Error('body-too-large');
+    chunks.push(chunk);
+  }
+  const raw = Buffer.concat(chunks).toString('utf8');
+  if (!raw) return {};
+  try {
+    return JSON.parse(raw);
+  } catch {
+    throw new Error('invalid-json');
+  }
+}
+
+// UserList schema validation and signatures
+const allowedRoot = new Set(['v', 'created', 'opinions', 'titles']);
+const allowedTitle = new Set(['id', 'title', 'year', 'type', 'origin', 'api', 'lookupTitle', 'externalId']);
+const allowedOpinion = new Set(['id', 'verdict']);
+const safeId = /^[matwc]:[A-Za-z0-9._:-]{1,150}$/;
+function safeText(value, max, required = false) {
+  if (value == null || value === '') return required ? null : '';
+  if (typeof value !== 'string') return null;
+  const s = value.normalize('NFKC').trim();
+  if (!s || s.length > max) return null;
+  if (/[<>\u0000-\u001F\u007F]/.test(s)) return null;
+  if (/javascript\s*:/i.test(s)) return null;
+  return s;
+}
+function exactKeys(obj, allowed) {
+  return (
+    obj && typeof obj === 'object' && !Array.isArray(obj) && Object.keys(obj).every((k) => allowed.has(k))
+  );
+}
+function validatePayload(input) {
+  if (!exactKeys(input, allowedRoot)) throw new Error('invalid-schema');
+  if (input.v !== 1) throw new Error('unsupported-version');
+  if (!Array.isArray(input.opinions) || !Array.isArray(input.titles)) throw new Error('invalid-schema');
+  if (input.opinions.length > 3000 || input.titles.length > 1500) throw new Error('too-many-items');
+  const seenOpinions = new Set();
+  const opinions = [];
+  for (const o of input.opinions) {
+    if (
+      !exactKeys(o, allowedOpinion) ||
+      typeof o.id !== 'string' ||
+      !safeId.test(o.id) ||
+      !['recommend', 'avoid'].includes(o.verdict)
+    )
+      throw new Error('invalid-opinion');
+    if (seenOpinions.has(o.id)) throw new Error('duplicate-opinion');
+    seenOpinions.add(o.id);
+    opinions.push({ id: o.id, verdict: o.verdict });
+  }
+  const seenTitles = new Set();
+  const titles = [];
+  for (const t of input.titles) {
+    if (!exactKeys(t, allowedTitle) || typeof t.id !== 'string' || !safeId.test(t.id))
+      throw new Error('invalid-title');
+    if (seenTitles.has(t.id)) throw new Error('duplicate-title');
+    seenTitles.add(t.id);
+    const title = safeText(t.title, 180, true);
+    const type = safeText(t.type, 50, true);
+    const origin = safeText(t.origin || 'Unknown', 80, true);
+    const lookupTitle = safeText(t.lookupTitle || title, 180, true);
+    const api = ['anilist', 'tvmaze', 'wiki', 'none'].includes(t.api) ? t.api : null;
+    const externalId = safeText(String(t.externalId ?? ''), 80, false);
+    const year = Number(t.year || 0);
+    if (
+      !title ||
+      !type ||
+      !origin ||
+      !lookupTitle ||
+      !api ||
+      !Number.isInteger(year) ||
+      year < 0 ||
+      year > 2200
+    )
+      throw new Error('invalid-title');
+    titles.push({ id: t.id, title, year, type, origin, api, lookupTitle, externalId });
+  }
+  const created = safeText(input.created || new Date().toISOString(), 64, true);
+  if (!created) throw new Error('invalid-created');
+  return { v: 1, created, opinions, titles };
+}
+
+function b64url(buf) {
+  return Buffer.from(buf).toString('base64url');
+}
+function fromB64url(s) {
+  if (typeof s !== 'string' || !/^[A-Za-z0-9_-]+$/.test(s)) throw new Error('invalid-base64');
+  const buf = Buffer.from(s, 'base64url');
+  if (buf.toString('base64url') !== s) throw new Error('invalid-base64');
+  return buf;
+}
+function signPayload(payload) {
+  const canonical = JSON.stringify(validatePayload(payload));
+  const raw = Buffer.from(canonical, 'utf8');
+  if (raw.length > 150 * 1024) throw new Error('payload-too-large');
+  const sig = cryptoSign(null, raw, PRIVATE_KEY);
+  return `UWL1.${KEY_ID}.${b64url(raw)}.${b64url(sig)}`;
+}
+function verifyCode(code) {
+  if (typeof code !== 'string' || code.length > 240000) throw new Error('invalid-code');
+  const parts = code.trim().split('.');
+  if (parts.length !== 4 || parts[0] !== 'UWL1') throw new Error('not-userlist-code');
+  if (parts[1] !== KEY_ID) throw new Error('foreign-userlist-key');
+  const raw = fromB64url(parts[2]);
+  const sig = fromB64url(parts[3]);
+  if (raw.length > 150 * 1024 || sig.length > 256) throw new Error('invalid-code');
+  if (!cryptoVerify(null, raw, PUBLIC_KEY, sig)) throw new Error('signature-failed');
+  let parsed;
+  try {
+    parsed = JSON.parse(raw.toString('utf8'));
+  } catch {
+    throw new Error('invalid-json');
+  }
+  return validatePayload(parsed);
+}
+
+function htmlToText(s = '') {
+  return String(s)
+    .replace(/<[^>]+>/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+// Remote artwork validation and local cover storage
+const coverInflight = new Map();
+const COVER_HOSTS = [
+  /(^|\.)anilist\.co$/i,
+  /(^|\.)myanimelist\.net$/i,
+  /(^|\.)tvmaze\.com$/i,
+  /(^|\.)wikimedia\.org$/i,
+];
+function allowedCoverUrl(raw = '') {
+  try {
+    const u = new URL(raw);
+    return u.protocol === 'https:' && COVER_HOSTS.some((re) => re.test(u.hostname));
+  } catch {
+    return false;
+  }
+}
+function coverExtension(contentType = '', raw = '') {
+  const ct = String(contentType).split(';')[0].trim().toLowerCase();
+  const byType = {
+    'image/jpeg': '.jpg',
+    'image/jpg': '.jpg',
+    'image/png': '.png',
+    'image/webp': '.webp',
+    'image/avif': '.avif',
+    'image/gif': '.gif',
+  };
+  if (byType[ct]) return byType[ct];
+  try {
+    const ext = extname(new URL(raw).pathname).toLowerCase();
+    return ['.jpg', '.jpeg', '.png', '.webp', '.avif', '.gif'].includes(ext)
+      ? ext === '.jpeg'
+        ? '.jpg'
+        : ext
+      : '';
+  } catch {
+    return '';
+  }
+}
+async function localizeCover(rawUrl = '') {
+  if (!rawUrl) return '';
+  if (rawUrl.startsWith('/covers/')) {
+    const local = join(COVER_DIR, rawUrl.slice('/covers/'.length));
+    return existsSync(local) ? rawUrl : '';
+  }
+  if (!allowedCoverUrl(rawUrl)) return '';
+  const key = createHash('sha256').update(rawUrl).digest('hex').slice(0, 32);
+  for (const ext of ['.jpg', '.png', '.webp', '.avif', '.gif']) {
+    if (existsSync(join(COVER_DIR, `${key}${ext}`))) return `/covers/${key}${ext}`;
+  }
+  if (coverInflight.has(key)) return coverInflight.get(key);
+  const job = (async () => {
+    try {
+      const r = await fetch(rawUrl, {
+        headers: {
+          Accept: 'image/avif,image/webp,image/png,image/jpeg,image/gif;q=0.8,*/*;q=0.1',
+          'User-Agent': 'UltimateAnimationIndex/5.0',
+        },
+        redirect: 'follow',
+        signal: AbortSignal.timeout(20000),
+      });
+      if (!r.ok) return '';
+      const finalUrl = r.url || rawUrl;
+      if (!allowedCoverUrl(finalUrl)) return '';
+      const type = r.headers.get('content-type') || '';
+      const ext = coverExtension(type, finalUrl);
+      if (!ext || !/^image\//i.test(type)) return '';
+      const declared = Number(r.headers.get('content-length') || 0);
+      if (declared && declared > MAX_COVER_BYTES) return '';
+      const buf = Buffer.from(await r.arrayBuffer());
+      if (!buf.length || buf.length > MAX_COVER_BYTES) return '';
+      const file = join(COVER_DIR, `${key}${ext}`);
+      await writeFile(file, buf, { flag: 'wx' }).catch((e) => {
+        if (e?.code !== 'EEXIST') throw e;
+      });
+      return `/covers/${key}${ext}`;
+    } catch {
+      return '';
+    } finally {
+      coverInflight.delete(key);
+    }
+  })();
+  coverInflight.set(key, job);
+  return job;
+}
+async function localizeMetadataArtwork(data) {
+  if (!data || typeof data !== 'object') return data;
+  const remoteCover = data.coverRemote || data.cover || '';
+  const remoteBanner = data.bannerRemote || data.banner || '';
+  let cover = data.cover || '',
+    banner = data.banner || '';
+  if (remoteCover && !String(cover).startsWith('/covers/')) cover = await localizeCover(remoteCover);
+  else if (
+    String(cover).startsWith('/covers/') &&
+    !existsSync(join(COVER_DIR, String(cover).slice('/covers/'.length)))
+  )
+    cover = await localizeCover(remoteCover);
+  // Banners remain remote metadata for now; cards and dialog fall back to the cached local cover.
+  if (banner && !String(banner).startsWith('/covers/')) banner = '';
+  return {
+    ...data,
+    cover: cover || '',
+    banner: banner || '',
+    coverRemote: remoteCover || '',
+    bannerRemote: remoteBanner || '',
+  };
+}
+function normMetaTitle(s = '') {
+  return String(s)
+    .normalize('NFKD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+// Metadata provider adapters
+const ANILIST_FIELDS = `id title{romaji english native} coverImage{extraLarge large} bannerImage seasonYear format status episodes duration genres averageScore siteUrl description(asHtml:false) isAdult studios(isMain:true){nodes{name}}`;
+function fromAniListMedia(m, title) {
+  if (!m) throw new Error('not-found');
+  return {
+    source: 'anilist',
+    externalId: String(m.id),
+    canonicalTitle: m.title?.english || m.title?.romaji || title,
+    altTitle: m.title?.romaji || '',
+    cover: m.coverImage?.extraLarge || m.coverImage?.large || '',
+    banner: m.bannerImage || '',
+    year: m.seasonYear || 0,
+    format: m.format || '',
+    status: m.status || '',
+    episodes: m.episodes || 0,
+    duration: m.duration || 0,
+    genres: m.genres || [],
+    score: m.averageScore || 0,
+    siteUrl: m.siteUrl || '',
+    description: htmlToText(m.description || ''),
+    studio: m.studios?.nodes?.[0]?.name || '',
+    isAdult: !!m.isAdult,
+  };
+}
+async function fetchAniList(query, variables) {
+  const r = await fetch('https://graphql.anilist.co', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+    body: JSON.stringify({ query, variables }),
+    signal: AbortSignal.timeout(12000),
+  });
+  if (!r.ok) {
+    const e = new Error(`anilist-${r.status}`);
+    e.status = r.status;
+    e.retryAfter = r.headers.get('retry-after') || '';
+    throw e;
+  }
+  const j = await r.json();
+  if (j.errors?.length) throw new Error('anilist-graphql');
+  return j.data || {};
+}
+async function metaAniList(title) {
+  const query = `query($s:String){Media(search:$s,type:ANIME){${ANILIST_FIELDS}}}`;
+  const data = await fetchAniList(query, { s: title });
+  return fromAniListMedia(data.Media, title);
+}
+async function metaAniListBatch(titles) {
+  if (!titles.length) return [];
+  const defs = titles.map((_, i) => `$s${i}:String`).join(',');
+  const fields = titles.map((_, i) => `m${i}:Media(search:$s${i},type:ANIME){${ANILIST_FIELDS}}`).join('\n');
+  const variables = Object.fromEntries(titles.map((t, i) => [`s${i}`, t]));
+  const data = await fetchAniList(`query(${defs}){${fields}}`, variables);
+  return titles.map((title, i) => {
+    try {
+      return fromAniListMedia(data[`m${i}`], title);
+    } catch {
+      return null;
+    }
+  });
+}
+async function metaJikan(title) {
+  const r = await fetch(`https://api.jikan.moe/v4/anime?q=${encodeURIComponent(title)}&limit=5&sfw=false`, {
+    headers: { Accept: 'application/json' },
+    signal: AbortSignal.timeout(12000),
+  });
+  if (!r.ok) throw new Error(`jikan-${r.status}`);
+  const j = await r.json();
+  const rows = Array.isArray(j.data) ? j.data : [];
+  if (!rows.length) throw new Error('not-found');
+  const target = normMetaTitle(title);
+  const ranked = rows
+    .map((m) => {
+      const names = [m.title, m.title_english, ...(m.titles || []).map((x) => x.title)]
+        .filter(Boolean)
+        .map(normMetaTitle);
+      let score = names.includes(target) ? 100 : 0;
+      score += Math.max(...names.map((n) => (n.includes(target) || target.includes(n) ? 30 : 0)), 0);
+      return { m, score };
+    })
+    .sort((a, b) => b.score - a.score);
+  const m = ranked[0].m;
+  return {
+    source: 'jikan',
+    externalId: String(m.mal_id || ''),
+    canonicalTitle: m.title_english || m.title || title,
+    altTitle: m.title || '',
+    cover:
+      m.images?.webp?.large_image_url ||
+      m.images?.jpg?.large_image_url ||
+      m.images?.webp?.image_url ||
+      m.images?.jpg?.image_url ||
+      '',
+    banner: '',
+    year: m.year || m.aired?.prop?.from?.year || 0,
+    format: m.type || '',
+    status: m.status || '',
+    episodes: m.episodes || 0,
+    duration: 0,
+    genres: [...(m.genres || []), ...(m.explicit_genres || []), ...(m.themes || [])]
+      .map((x) => x.name)
+      .filter(Boolean),
+    score: m.score ? Math.round(m.score * 10) : 0,
+    siteUrl: m.url || '',
+    description: htmlToText(m.synopsis || ''),
+    studio: m.studios?.[0]?.name || '',
+    isAdult:
+      /rx|hentai/i.test(m.rating || '') ||
+      (m.explicit_genres || []).some((x) => /hentai/i.test(x.name || '')),
+  };
+}
+async function metaWiki(title) {
+  const searchUrl = `https://en.wikipedia.org/w/api.php?action=query&list=search&srsearch=${encodeURIComponent(title)}&srlimit=1&format=json&utf8=1`;
+  const sr = await fetch(searchUrl, {
+    headers: { 'User-Agent': 'UltimateAnimationIndex/5.0' },
+    signal: AbortSignal.timeout(12000),
+  });
+  if (!sr.ok) throw new Error(`wiki-${sr.status}`);
+  const sj = await sr.json();
+  const hit = sj.query?.search?.[0];
+  if (!hit) throw new Error('not-found');
+  const detail = `https://en.wikipedia.org/w/api.php?action=query&pageids=${encodeURIComponent(hit.pageid)}&prop=extracts|pageimages|info&exintro=1&explaintext=1&inprop=url&piprop=thumbnail|original&pithumbsize=1200&format=json&utf8=1`;
+  const rr = await fetch(detail, {
+    headers: { 'User-Agent': 'UltimateAnimationIndex/5.0' },
+    signal: AbortSignal.timeout(12000),
+  });
+  if (!rr.ok) throw new Error(`wiki-detail-${rr.status}`);
+  const j = await rr.json();
+  const m = j.query?.pages?.[String(hit.pageid)];
+  if (!m) throw new Error('not-found');
+  const extract = m.extract || '';
+  const yearMatch = extract.match(/\b(19|20)\d{2}\b/);
+  return {
+    source: 'wikipedia',
+    externalId: String(m.pageid || hit.pageid || ''),
+    canonicalTitle: m.title || title,
+    cover: m.original?.source || m.thumbnail?.source || '',
+    banner: '',
+    year: yearMatch ? Number(yearMatch[0]) : 0,
+    format: 'Film',
+    status: '',
+    episodes: 0,
+    duration: 0,
+    genres: [],
+    score: 0,
+    siteUrl: m.fullurl || '',
+    description: extract,
+    studio: '',
+  };
+}
+async function metaTVMaze(title) {
+  const r = await fetch(`https://api.tvmaze.com/singlesearch/shows?q=${encodeURIComponent(title)}`, {
+    headers: { Accept: 'application/json' },
+    signal: AbortSignal.timeout(12000),
+  });
+  if (!r.ok) throw new Error(`tvmaze-${r.status}`);
+  const m = await r.json();
+  let data = {
+    source: 'tvmaze',
+    externalId: String(m.id),
+    canonicalTitle: m.name || title,
+    cover: m.image?.original || m.image?.medium || '',
+    banner: '',
+    year: m.premiered ? Number(m.premiered.slice(0, 4)) : 0,
+    format: 'TV',
+    status: m.status || '',
+    episodes: 0,
+    duration: m.runtime || m.averageRuntime || 0,
+    genres: m.genres || [],
+    score: m.rating?.average ? Math.round(m.rating.average * 10) : 0,
+    siteUrl: m.officialSite || m.url || '',
+    description: htmlToText(m.summary || ''),
+    studio: m.network?.name || m.webChannel?.name || '',
+  };
+  if (!data.cover) {
+    try {
+      const ir = await fetch(`https://api.tvmaze.com/shows/${encodeURIComponent(m.id)}/images`, {
+        headers: { Accept: 'application/json' },
+        signal: AbortSignal.timeout(12000),
+      });
+      if (ir.ok) {
+        const imgs = await ir.json();
+        const poster =
+          (Array.isArray(imgs) ? imgs : []).find(
+            (x) => x.type === 'poster' && x.resolutions?.original?.url,
+          ) || (Array.isArray(imgs) ? imgs : []).find((x) => x.resolutions?.original?.url);
+        if (poster) data.cover = poster.resolutions.original.url;
+      }
+    } catch {}
+  }
+  if (!data.cover) {
+    try {
+      const w = await metaWiki(title);
+      data = {
+        ...w,
+        ...data,
+        cover: w.cover || '',
+        banner: w.banner || '',
+        description: data.description || w.description,
+        siteUrl: data.siteUrl || w.siteUrl,
+      };
+    } catch {}
+  }
+  return data;
+}
+function cacheKey(kind, title) {
+  return `${kind}:${String(title).toLowerCase()}`;
+}
+function cacheGet(kind, title) {
+  const hit = metadataCache[cacheKey(kind, title)];
+  if (!hit || Date.now() - hit.ts >= META_TTL) return null;
+  const d = hit.data;
+  if (d?.cover && !String(d.cover).startsWith('/covers/')) return null;
+  if (d?.cover?.startsWith('/covers/') && !existsSync(join(COVER_DIR, d.cover.slice('/covers/'.length))))
+    return null;
+  return d;
+}
+function cachePut(kind, title, data) {
+  metadataCache[cacheKey(kind, title)] = { ts: Date.now(), data };
+  persistCacheSoon();
+  return data;
+}
+async function getMetadata(kind, title) {
+  const cached = cacheGet(kind, title);
+  if (cached) return cached;
+  let data;
+  if (kind === 'anilist') {
+    try {
+      data = await metaAniList(title);
+    } catch {
+      try {
+        data = await metaJikan(title);
+      } catch {
+        data = await metaWiki(title);
+      }
+    }
+    if (!data.cover && data.source !== 'jikan') {
+      try {
+        const j = await metaJikan(title);
+        data = { ...data, cover: j.cover || data.cover, siteUrl: data.siteUrl || j.siteUrl };
+      } catch {}
+    }
+    if (!data.cover) {
+      try {
+        const w = await metaWiki(title);
+        data = {
+          ...w,
+          ...data,
+          cover: w.cover || '',
+          description: data.description || w.description,
+          siteUrl: data.siteUrl || w.siteUrl,
+        };
+      } catch {}
+    }
+  } else if (kind === 'tvmaze') data = await metaTVMaze(title);
+  else if (kind === 'wiki') data = await metaWiki(title);
+  else throw new Error('unsupported-metadata-kind');
+  data = await localizeMetadataArtwork(data);
+  return cachePut(kind, title, data);
+}
+async function getMetadataBatch(items) {
+  const results = [];
+  const misses = [];
+  for (const it of items) {
+    const cached = cacheGet(it.kind, it.title);
+    if (cached) results.push({ key: it.key, data: cached });
+    else misses.push(it);
+  }
+  const ani = misses.filter((x) => x.kind === 'anilist');
+  const other = misses.filter((x) => x.kind !== 'anilist');
+  if (ani.length) {
+    let rows = [];
+    try {
+      rows = await metaAniListBatch(ani.map((x) => x.title));
+    } catch {
+      rows = new Array(ani.length).fill(null);
+    }
+    for (let i = 0; i < ani.length; i++) {
+      const it = ani[i];
+      let data = rows[i];
+      if (!data || !data.cover) {
+        try {
+          const j = await metaJikan(it.title);
+          data = data ? { ...data, cover: j.cover || data.cover, siteUrl: data.siteUrl || j.siteUrl } : j;
+        } catch {}
+      }
+      if (!data || !data.cover) {
+        try {
+          const w = await metaWiki(it.title);
+          data = data
+            ? {
+                ...w,
+                ...data,
+                cover: w.cover || '',
+                description: data.description || w.description,
+                siteUrl: data.siteUrl || w.siteUrl,
+              }
+            : w;
+        } catch {}
+      }
+      if (data) {
+        data = await localizeMetadataArtwork(data);
+        cachePut(it.kind, it.title, data);
+        results.push({ key: it.key, data });
+      } else results.push({ key: it.key, error: 'not-found' });
+    }
+  }
+  for (const it of other) {
+    try {
+      const data = await getMetadata(it.kind, it.title);
+      results.push({ key: it.key, data });
+    } catch (e) {
+      results.push({ key: it.key, error: e?.message || 'not-found' });
+    }
+  }
+  return results;
+}
+
+const CATALOG_TOTAL = (() => {
+  try {
+    const c = JSON.parse(readFileSync(join(PUBLIC, 'catalog.json'), 'utf8'));
+    return Array.isArray(c.items) ? c.items.length : 0;
+  } catch {
+    return 0;
+  }
+})();
+
+// Background artwork cache warmer
+const warmState = { running: false, total: 0, done: 0, failed: 0, startedAt: '', finishedAt: '' };
+function coverFileCount() {
+  try {
+    return readdirSync(COVER_DIR).filter((n) => /\.(?:jpe?g|png|webp|avif|gif)$/i.test(n)).length;
+  } catch {
+    return 0;
+  }
+}
+const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+function hasLocalArtwork(kind, title) {
+  const hit = metadataCache[cacheKey(kind, title)];
+  const cover = hit?.data?.cover || '';
+  return !!(cover.startsWith('/covers/') && existsSync(join(COVER_DIR, cover.slice('/covers/'.length))));
+}
+async function warmCatalogArtwork() {
+  if (warmState.running) return;
+  warmState.running = true;
+  warmState.startedAt = new Date().toISOString();
+  warmState.finishedAt = '';
+  warmState.failed = 0;
+  warmState.done = 0;
+  try {
+    const catalog = JSON.parse(await readFile(join(PUBLIC, 'catalog.json'), 'utf8'));
+    const all = (catalog.items || [])
+      .filter((x) => x?.id && ['anilist', 'tvmaze', 'wiki'].includes(x.api))
+      .map((x) => ({ key: x.id, kind: x.api, title: x.lookupTitle || x.title }))
+      .filter((x) => !hasLocalArtwork(x.kind, x.title));
+    warmState.total = all.length;
+    const batchSize = 10;
+    for (let i = 0; i < all.length; i += batchSize) {
+      const batch = all.slice(i, i + batchSize);
+      try {
+        const rows = await getMetadataBatch(batch);
+        warmState.failed += rows.filter((r) => r.error || !r.data?.cover).length;
+      } catch {
+        warmState.failed += batch.length;
+      }
+      warmState.done = Math.min(i + batch.length, all.length);
+      if (i + batchSize < all.length) await delay(2800);
+    }
+  } catch (e) {
+    console.warn('Artwork warm-up stopped:', e?.message || e);
+  } finally {
+    warmState.running = false;
+    warmState.finishedAt = new Date().toISOString();
+  }
+}
+
+const mime = {
+  '.html': 'text/html; charset=utf-8',
+  '.js': 'text/javascript; charset=utf-8',
+  '.css': 'text/css; charset=utf-8',
+  '.json': 'application/json; charset=utf-8',
+  '.svg': 'image/svg+xml',
+  '.png': 'image/png',
+  '.jpg': 'image/jpeg',
+  '.jpeg': 'image/jpeg',
+  '.webp': 'image/webp',
+  '.ico': 'image/x-icon',
+  '.txt': 'text/plain; charset=utf-8',
+};
+
+// Static-file serving is intentionally restricted to PUBLIC.
+async function serveStatic(req, res, pathName) {
+  const isCover = pathName.startsWith('/covers/');
+  const base = isCover ? COVER_DIR : PUBLIC;
+  let rel = isCover
+    ? decodeURIComponent(pathName.slice('/covers/'.length))
+    : pathName === '/'
+      ? 'index.html'
+      : decodeURIComponent(pathName).replace(/^\/+/, '');
+  const file = resolve(base, normalize(rel));
+  const root = resolve(base);
+  if (!file.startsWith(root)) return send(res, 403, { error: 'forbidden' });
+  try {
+    const st = await stat(file);
+    if (!st.isFile()) throw new Error('not-file');
+    const data = await readFile(file);
+    const ext = extname(file);
+    res.writeHead(200, {
+      'Content-Type': mime[ext] || 'application/octet-stream',
+      'Cache-Control': isCover ? 'public, max-age=31536000, immutable' : 'no-cache',
+      'X-Content-Type-Options': 'nosniff',
+      'Referrer-Policy': 'no-referrer',
+      'X-Frame-Options': 'DENY',
+      'Permissions-Policy': 'camera=(), microphone=(), geolocation=()',
+      'Content-Security-Policy':
+        "default-src 'self'; img-src 'self' data:; style-src 'self' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com data:; connect-src 'self'; script-src 'self'; object-src 'none'; base-uri 'none'; form-action 'self'; frame-ancestors 'none'",
+    });
+    res.end(data);
+  } catch {
+    send(res, 404, { error: 'not-found' });
+  }
+}
+
+// API router
+export const server = http.createServer(async (req, res) => {
+  try {
+    const u = new URL(req.url, `http://${req.headers.host || 'localhost'}`);
+    if (u.pathname === '/api/health')
+      return send(res, 200, {
+        ok: true,
+        format: 'UWL1',
+        keyId: KEY_ID,
+        artwork: warmState,
+        covers: {
+          cached: coverFileCount(),
+          total: CATALOG_TOTAL,
+          running: warmState.running,
+          processed: warmState.done,
+        },
+      });
+    if (u.pathname === '/api/userlist/sign' && req.method === 'POST') {
+      const body = await readBody(req);
+      const code = signPayload(body);
+      return send(res, 200, { ok: true, code, format: 'UWL1', keyId: KEY_ID });
+    }
+    if (u.pathname === '/api/userlist/verify' && req.method === 'POST') {
+      const body = await readBody(req);
+      const payload = verifyCode(body.code);
+      return send(res, 200, { ok: true, payload, format: 'UWL1', keyId: KEY_ID });
+    }
+    if (u.pathname === '/api/meta/batch' && req.method === 'POST') {
+      const body = await readBody(req);
+      if (!body || !Array.isArray(body.items) || body.items.length < 1 || body.items.length > 16)
+        return send(res, 400, { ok: false, error: 'invalid-batch' });
+      const items = [];
+      for (const raw of body.items) {
+        if (
+          !raw ||
+          typeof raw !== 'object' ||
+          Array.isArray(raw) ||
+          Object.keys(raw).some((k) => !['key', 'kind', 'title'].includes(k))
+        )
+          return send(res, 400, { ok: false, error: 'invalid-batch' });
+        const key = safeText(raw.key, 180, true),
+          title = safeText(raw.title, 180, true),
+          kind = raw.kind;
+        if (!key || !title || !['anilist', 'tvmaze', 'wiki'].includes(kind))
+          return send(res, 400, { ok: false, error: 'invalid-batch' });
+        items.push({ key, kind, title });
+      }
+      const results = await getMetadataBatch(items);
+      return send(res, 200, { ok: true, results });
+    }
+    if (u.pathname === '/api/meta' && req.method === 'GET') {
+      const kind = u.searchParams.get('kind') || '';
+      const title = safeText(u.searchParams.get('title') || '', 180, true);
+      if (!title) return send(res, 400, { error: 'invalid-title' });
+      const data = await getMetadata(kind, title);
+      return send(res, 200, { ok: true, data });
+    }
+    if (u.pathname === '/api/resolve' && req.method === 'GET') {
+      const kind = u.searchParams.get('kind') || '';
+      const title = safeText(u.searchParams.get('title') || '', 180, true);
+      if (!title) return send(res, 400, { error: 'invalid-title' });
+      const data = await getMetadata(kind, title);
+      return send(res, 200, { ok: true, data });
+    }
+    if (u.pathname.startsWith('/api/')) return send(res, 404, { error: 'unknown-api' });
+    return serveStatic(req, res, u.pathname);
+  } catch (e) {
+    const msg = e?.message || 'server-error';
+    const status = [
+      'invalid-json',
+      'invalid-schema',
+      'unsupported-version',
+      'invalid-opinion',
+      'invalid-title',
+      'duplicate-opinion',
+      'duplicate-title',
+      'too-many-items',
+      'payload-too-large',
+      'invalid-code',
+      'not-userlist-code',
+      'foreign-userlist-key',
+      'signature-failed',
+      'invalid-base64',
+      'invalid-created',
+      'body-too-large',
+      'invalid-batch',
+    ].includes(msg)
+      ? 400
+      : 500;
+    return send(res, status, { ok: false, error: msg });
+  }
+});
+// Exported separately so integration tests can bind to an ephemeral port.
+export function startServer(port = PORT) {
+  return server.listen(port, () => {
+    const address = server.address();
+    const activePort = typeof address === 'object' && address ? address.port : port;
+    console.log(`Ultimate Animation Index on http://localhost:${activePort} · UserList key ${KEY_ID}`);
+    setTimeout(() => {
+      if (process.env.UAI_SKIP_WARM !== '1') warmCatalogArtwork();
+    }, 900);
+  });
+}
+
+const isDirectRun = process.argv[1] && resolve(process.argv[1]) === resolve(fileURLToPath(import.meta.url));
+if (isDirectRun) startServer();

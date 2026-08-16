@@ -1,0 +1,10 @@
+.git
+.github
+.cache
+.userlist-keys
+covers
+node_modules
+__pycache__
+*.pyc
+*.log
+public/catalog.json

@@ -1,0 +1,328 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <meta name="color-scheme" content="dark" />
+    <meta name="theme-color" content="#08090d" />
+    <title>Ultimate Animation Index</title>
+    <meta
+      name="description"
+      content="A ranked animation watchlist covering anime, films, donghua and stylized animation from around the world."
+    />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:ital,wght@0,600;0,700;0,800;1,700&family=Space+Grotesk:wght@400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="styles.css?v=4.2.1" />
+  </head>
+  <body>
+    <div class="noise"></div>
+    <header class="topbar">
+      <a class="brand" href="#" aria-label="Ultimate Animation Index home">
+        <span class="brand-mark">U/A</span>
+        <span class="brand-copy"><b>ULTIMATE</b><small>ANIMATION INDEX</small></span>
+      </a>
+      <div class="topline">
+        <span>ANIME &amp; ANIMATION</span><span>FILMS &amp; SERIES</span><span>WATCH ORDERS</span>
+      </div>
+      <button id="quickAddBtn" class="slash-button small">+ ADD TITLE</button>
+    </header>
+
+    <nav class="rail" aria-label="Main sections">
+      <button class="rail-tab active" data-tab="master"><b>01</b><span>MASTER</span></button>
+      <button class="rail-tab" data-tab="collections"><b>02</b><span>COLLECTIONS</span></button>
+      <button class="rail-tab" data-tab="franchises"><b>03</b><span>FRANCHISES</span></button>
+      <button class="rail-tab" data-tab="adult"><b>04</b><span>ADULT</span></button>
+      <button class="rail-tab" data-tab="favorites"><b>05</b><span>FAVORITES</span></button>
+      <button class="rail-tab" data-tab="userlist"><b>06</b><span>USERLIST</span></button>
+    </nav>
+
+    <main class="main-shell">
+      <section id="masterTab" class="panel active">
+        <div class="hero-grid">
+          <div class="hero-copy">
+            <div class="kicker">MASTER LIST</div>
+            <h1>THE <i>ULTIMATE</i><br />ANIMATION INDEX.</h1>
+            <p>
+              Anime and animation from every era, genre and country. Browse the ranking, narrow it down with
+              filters, or save titles for later.
+            </p>
+            <div class="hero-actions">
+              <button id="surpriseBtn" class="slash-button hot">SURPRISE ME</button>
+              <button id="topUnseenBtn" class="slash-button">TOP UNSEEN</button>
+            </div>
+          </div>
+          <aside class="hero-feature" id="heroFeature">
+            <div class="feature-rank">#001</div>
+            <div class="feature-lines"><span></span><span></span><span></span></div>
+            <div class="feature-title">ATTACK ON TITAN</div>
+            <div class="feature-sub">No. 1 in the current ranking.</div>
+          </aside>
+        </div>
+
+        <section class="stat-strip" id="statStrip"></section>
+
+        <div class="toolbar-shell sticky-tools">
+          <div class="search-block">
+            <span>SEARCH //</span
+            ><input
+              id="searchInput"
+              type="search"
+              placeholder="Search titles, genres or studios"
+              autocomplete="off"
+            />
+          </div>
+          <select id="tierFilter" aria-label="Quality tier">
+            <option value="">ALL TIERS</option>
+          </select>
+          <select id="typeFilter" aria-label="Format">
+            <option value="">ALL FORMATS</option>
+          </select>
+          <select id="genreFilter" aria-label="Genre">
+            <option value="">ALL GENRES</option>
+          </select>
+          <select id="statusFilter" aria-label="Watch status">
+            <option value="">ALL STATUS</option>
+            <option>Not started</option>
+            <option>Watching</option>
+            <option>Completed</option>
+            <option>On hold</option>
+            <option>Dropped</option>
+          </select>
+          <select id="sortSelect" aria-label="Sort order">
+            <option value="rank">MASTER RANK</option>
+            <option value="overall">OVERALL SCORE</option>
+            <option value="production">PRODUCTION</option>
+            <option value="story">STORY</option>
+            <option value="emotional">EMOTIONAL PAYOFF</option>
+            <option value="year">NEWEST</option>
+            <option value="title">A-Z</option>
+            <option value="myrating">MY RATING</option>
+          </select>
+          <button id="viewToggle" class="square-button" title="Toggle compact view">▥</button>
+        </div>
+        <div class="result-line">
+          <span><b id="resultCount">0</b> TITLES</span>
+          <div>
+            <label><input id="hideCompleted" type="checkbox" /> HIDE COMPLETED</label
+            ><label><input id="customOnly" type="checkbox" /> MY ADDED TITLES</label>
+          </div>
+        </div>
+        <section class="card-grid" id="cards"></section>
+        <div class="load-wrap"><button id="loadMoreBtn" class="slash-button">LOAD MORE</button></div>
+      </section>
+
+      <section id="collectionsTab" class="panel">
+        <header class="section-head angled-head">
+          <div>
+            <div class="kicker">STUDIOS / DIRECTORS / CREATORS</div>
+            <h2>COLLECTIONS</h2>
+          </div>
+          <p>
+            Browse titles by studio, director or creator. Some collections are complete; others highlight the
+            strongest work in the main list.
+          </p>
+        </header>
+        <div class="collection-tools">
+          <input id="collectionSearch" type="search" placeholder="Search studio, director or title..." /><span
+            id="collectionCount"
+          ></span>
+        </div>
+        <div class="collection-grid" id="collectionGrid"></div>
+      </section>
+
+      <section id="franchisesTab" class="panel">
+        <header class="section-head angled-head">
+          <div>
+            <div class="kicker">WATCH ORDER</div>
+            <h2>FRANCHISE GUIDES</h2>
+          </div>
+          <p>
+            Recommended viewing order, chronology, alternate continuities and episode jumps when a franchise
+            needs them.
+          </p>
+        </header>
+        <div class="franchise-tools">
+          <input id="franchiseSearch" type="search" placeholder="Search Fate, Gundam, Haruhi..." /><span
+            id="franchiseCount"
+          ></span>
+        </div>
+        <div class="franchise-stack" id="franchiseStack"></div>
+      </section>
+
+      <section id="adultTab" class="panel">
+        <header class="section-head angled-head adult-head">
+          <div>
+            <div class="kicker">ADULT CONTENT</div>
+            <h2>ADULT</h2>
+          </div>
+          <p>
+            Filter adult titles by type or content. Content levels are shown in plain language on each title.
+          </p>
+        </header>
+        <div class="adult-controls">
+          <button class="adult-chip active" data-adult="all">ALL ADULT</button>
+          <button class="adult-chip" data-adult="ecchi">ECCHI</button>
+          <button class="adult-chip" data-adult="erotic">EROTIC</button>
+          <button class="adult-chip" data-adult="hentai">HENTAI</button>
+          <button class="adult-chip" data-adult="gore">GORE</button>
+          <button class="adult-chip" data-adult="violence">EXTREME VIOLENCE</button>
+          <button class="adult-chip" data-adult="disturbing">DISTURBING</button>
+        </div>
+        <div class="adult-legend">
+          <strong>CONTENT GUIDE</strong><span>None</span><span>Mild</span><span>Moderate</span
+          ><span>Strong</span><span>Very strong</span><span>Extreme</span>
+        </div>
+        <section class="card-grid adult-grid" id="adultCards"></section>
+      </section>
+
+      <section id="favoritesTab" class="panel">
+        <header class="section-head angled-head">
+          <div>
+            <div class="kicker">YOUR SAVED TITLES</div>
+            <h2>FAVORITES</h2>
+          </div>
+          <p>
+            Use the heart icon on any title to keep it here. Favorites stay on this device and are not shared
+            in a UserList.
+          </p>
+        </header>
+        <div class="favorites-tools">
+          <input id="favoriteSearch" type="search" placeholder="Search favorites..." />
+          <span id="favoriteCount">0 FAVORITES</span>
+        </div>
+        <section class="card-grid" id="favoriteCards"></section>
+      </section>
+
+      <section id="userlistTab" class="panel">
+        <header class="section-head angled-head">
+          <div>
+            <div class="kicker">SHARE YOUR PICKS</div>
+            <h2>USERLIST</h2>
+          </div>
+          <p>
+            Share recommendations and missing-title additions as one signed text code. The person importing it
+            chooses the source name on their own copy.
+          </p>
+        </header>
+        <div id="securityState" class="security-strip">
+          <b>SECURE USERLIST</b><span>Checking signature service...</span>
+        </div>
+        <div class="userlist-grid">
+          <section class="user-panel export-panel">
+            <div class="panel-no">A</div>
+            <h3>EXPORT YOUR USERLIST</h3>
+            <p>
+              Includes your <b>Recommended</b> and <b>Not recommended</b> marks, plus titles you added
+              yourself. Watch progress, ratings, favorites and private notes stay on this device.
+            </p>
+            <div class="userlist-summary" id="userListSummary"></div>
+            <button id="generateCodeBtn" class="slash-button hot wide">GENERATE SIGNED CODE</button>
+            <textarea id="exportCode" spellcheck="false" readonly placeholder="UWL1.…"></textarea>
+            <button id="copyCodeBtn" class="slash-button wide">COPY CODE</button>
+          </section>
+          <section class="user-panel import-panel">
+            <div class="panel-no">B</div>
+            <h3>IMPORT A USERLIST</h3>
+            <p>
+              The code is verified before anything is imported. The source name is chosen locally and is never
+              stored in the shared code.
+            </p>
+            <label class="field-label"
+              >LOCAL SOURCE NAME<input
+                id="importSourceName"
+                maxlength="40"
+                placeholder="e.g. Alex / Reddit user / Jordan"
+            /></label>
+            <label class="field-label"
+              >SIGNED USERLIST CODE<textarea
+                id="importCode"
+                spellcheck="false"
+                placeholder="Paste UWL1.…"
+              ></textarea>
+            </label>
+            <button id="importCodeBtn" class="slash-button hot wide">VERIFY + IMPORT</button>
+            <div id="importResult" class="import-result"></div>
+          </section>
+          <section class="user-panel add-panel">
+            <div class="panel-no">C</div>
+            <h3>ADD A MISSING TITLE</h3>
+            <p>
+              Add a title that is missing from the main list. The site checks for an existing match before
+              creating anything new.
+            </p>
+            <form id="addTitleForm">
+              <label class="field-label"
+                >TITLE<input id="addTitleName" required maxlength="180" placeholder="Title"
+              /></label>
+              <div class="field-row">
+                <label class="field-label"
+                  >YEAR<input
+                    id="addTitleYear"
+                    type="number"
+                    min="1900"
+                    max="2200"
+                    placeholder="Optional" /></label
+                ><label class="field-label"
+                  >FORMAT<select id="addTitleType">
+                    <option>Series</option>
+                    <option>Film</option>
+                    <option>OVA</option>
+                    <option>Donghua series</option>
+                    <option>Western series</option>
+                    <option>Western film</option>
+                    <option>Adult / Hentai</option>
+                  </select></label
+                >
+              </div>
+              <label class="field-label"
+                >ORIGIN<input id="addTitleOrigin" maxlength="80" placeholder="Japan / US / China / ..."
+              /></label>
+              <button class="slash-button wide" type="submit">RESOLVE + ADD</button>
+            </form>
+            <div id="addResult" class="import-result"></div>
+          </section>
+          <section class="user-panel sources-panel">
+            <div class="panel-no">D</div>
+            <h3>IMPORTED SOURCES</h3>
+            <p>
+              One global title record can carry any number of source opinions. Re-importing the same title
+              never creates another card.
+            </p>
+            <div id="sourceList" class="source-list"></div>
+          </section>
+        </div>
+        <section class="security-notes">
+          <h3>WHY THE CODE CAN'T BE SILENTLY EDITED</h3>
+          <div class="security-cols">
+            <p><b>Installation key.</b> Codes are tied to the site that generated them.</p>
+            <p><b>Signature check.</b> Edited or damaged codes are rejected.</p>
+            <p>
+              <b>Strict data format.</b> Imported codes cannot contain HTML, JavaScript or arbitrary fields.
+            </p>
+            <p>
+              <b>All-or-nothing import.</b> Nothing is saved unless the entire code passes validation and
+              duplicate checks.
+            </p>
+          </div>
+        </section>
+      </section>
+    </main>
+
+    <dialog id="detailDialog" class="detail-dialog">
+      <button class="dialog-x" id="dialogClose" aria-label="Close">×</button>
+      <div id="dialogBody"></div>
+    </dialog>
+
+    <dialog id="collectionDialog" class="collection-dialog">
+      <button class="dialog-x" id="collectionClose" aria-label="Close">×</button>
+      <div id="collectionBody"></div>
+    </dialog>
+
+    <div class="toast" id="toast"></div>
+    <script src="app.js?v=4.2.1"></script>
+  </body>
+</html>
