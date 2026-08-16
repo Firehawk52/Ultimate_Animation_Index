@@ -18,7 +18,7 @@ const PRIVATE = join(__dirname, '.userlist-keys');
 const CACHE_DIR = join(__dirname, '.cache');
 const COVER_DIR = join(__dirname, 'covers');
 const PORT = Number(process.env.PORT || 8787);
-const MAX_BODY = 256 * 1024;
+const MAX_BODY = 1024 * 1024;
 const META_TTL = 1000 * 60 * 60 * 24 * 30;
 const MAX_COVER_BYTES = 10 * 1024 * 1024;
 
@@ -89,7 +89,19 @@ async function readBody(req) {
 
 // UserList schema validation and signatures
 const allowedRoot = new Set(['v', 'created', 'opinions', 'titles']);
-const allowedTitle = new Set(['id', 'title', 'year', 'type', 'origin', 'api', 'lookupTitle', 'externalId']);
+const allowedTitle = new Set([
+  'id',
+  'title',
+  'year',
+  'type',
+  'origin',
+  'api',
+  'lookupTitle',
+  'externalId',
+  'genres',
+  'content',
+]);
+const allowedContent = new Set(['sex', 'nudity', 'violence', 'gore', 'disturbing', 'tags']);
 const allowedOpinion = new Set(['id', 'verdict']);
 const safeId = /^[matwc]:[A-Za-z0-9._:-]{1,150}$/;
 function safeText(value, max, required = false) {
@@ -105,6 +117,26 @@ function exactKeys(obj, allowed) {
   return (
     obj && typeof obj === 'object' && !Array.isArray(obj) && Object.keys(obj).every((k) => allowed.has(k))
   );
+}
+function validateContent(content) {
+  if (!exactKeys(content, allowedContent)) throw new Error('invalid-title');
+  const levels = {};
+  for (const key of ['sex', 'nudity', 'violence', 'gore', 'disturbing']) {
+    const value = Number(content[key] ?? 0);
+    if (!Number.isInteger(value) || value < 0 || value > 5) throw new Error('invalid-title');
+    levels[key] = value;
+  }
+  if (!Array.isArray(content.tags) || content.tags.length > 20) throw new Error('invalid-title');
+  const seenTags = new Set();
+  const tags = [];
+  for (const rawTag of content.tags) {
+    const tag = safeText(rawTag, 40, true);
+    const key = tag?.toLowerCase();
+    if (!tag || seenTags.has(key)) throw new Error('invalid-title');
+    seenTags.add(key);
+    tags.push(tag);
+  }
+  return { ...levels, tags };
 }
 function validatePayload(input) {
   if (!exactKeys(input, allowedRoot)) throw new Error('invalid-schema');
@@ -138,6 +170,10 @@ function validatePayload(input) {
     const lookupTitle = safeText(t.lookupTitle || title, 180, true);
     const api = ['anilist', 'tvmaze', 'wiki', 'none'].includes(t.api) ? t.api : null;
     const externalId = safeText(String(t.externalId ?? ''), 80, false);
+    const hasGenres = Object.hasOwn(t, 'genres');
+    const hasContent = Object.hasOwn(t, 'content');
+    const genres = hasGenres ? safeText(t.genres, 500, false) : '';
+    const content = hasContent ? validateContent(t.content) : null;
     const year = Number(t.year || 0);
     if (
       !title ||
@@ -150,7 +186,10 @@ function validatePayload(input) {
       year > 2200
     )
       throw new Error('invalid-title');
-    titles.push({ id: t.id, title, year, type, origin, api, lookupTitle, externalId });
+    const normalizedTitle = { id: t.id, title, year, type, origin, api, lookupTitle, externalId };
+    if (hasGenres) normalizedTitle.genres = genres;
+    if (hasContent) normalizedTitle.content = content;
+    titles.push(normalizedTitle);
   }
   const created = safeText(input.created || new Date().toISOString(), 64, true);
   if (!created) throw new Error('invalid-created');
@@ -169,18 +208,18 @@ function fromB64url(s) {
 function signPayload(payload) {
   const canonical = JSON.stringify(validatePayload(payload));
   const raw = Buffer.from(canonical, 'utf8');
-  if (raw.length > 150 * 1024) throw new Error('payload-too-large');
+  if (raw.length > 512 * 1024) throw new Error('payload-too-large');
   const sig = cryptoSign(null, raw, PRIVATE_KEY);
   return `UWL1.${KEY_ID}.${b64url(raw)}.${b64url(sig)}`;
 }
 function verifyCode(code) {
-  if (typeof code !== 'string' || code.length > 240000) throw new Error('invalid-code');
+  if (typeof code !== 'string' || code.length > 800000) throw new Error('invalid-code');
   const parts = code.trim().split('.');
   if (parts.length !== 4 || parts[0] !== 'UWL1') throw new Error('not-userlist-code');
   if (parts[1] !== KEY_ID) throw new Error('foreign-userlist-key');
   const raw = fromB64url(parts[2]);
   const sig = fromB64url(parts[3]);
-  if (raw.length > 150 * 1024 || sig.length > 256) throw new Error('invalid-code');
+  if (raw.length > 512 * 1024 || sig.length > 256) throw new Error('invalid-code');
   if (!cryptoVerify(null, raw, PUBLIC_KEY, sig)) throw new Error('signature-failed');
   let parsed;
   try {
@@ -315,7 +354,82 @@ function normMetaTitle(s = '') {
 }
 
 // Metadata provider adapters
-const ANILIST_FIELDS = `id title{romaji english native} coverImage{extraLarge large} bannerImage seasonYear format status episodes duration genres averageScore siteUrl description(asHtml:false) isAdult studios(isMain:true){nodes{name}}`;
+const ANILIST_FIELDS = `id title{romaji english native} coverImage{extraLarge large} bannerImage seasonYear format status episodes duration genres tags{name rank isMediaSpoiler} averageScore siteUrl description(asHtml:false) isAdult studios(isMain:true){nodes{name}}`;
+
+function contentLabels(labels = []) {
+  const relevant =
+    /hentai|erotica|ecchi|nudity|sexual content|sexual violence|explicit sex|violence|gore|horror|torture|rape|suicide|self[- ]harm|body horror|warfare/i;
+  return [
+    ...new Map(
+      labels
+        .filter((label) => relevant.test(String(label)))
+        .map((label) => [String(label).toLowerCase(), String(label)]),
+    ).values(),
+  ].slice(0, 20);
+}
+
+export function estimateContentRatings({
+  isAdult = false,
+  rating = '',
+  genres = [],
+  tags = [],
+  description = '',
+} = {}) {
+  const content = { sex: 0, nudity: 0, violence: 0, gore: 0, disturbing: 0, tags: [] };
+  const labels = [...genres, ...tags.map((tag) => (typeof tag === 'string' ? tag : tag?.name))]
+    .filter(Boolean)
+    .map(String);
+  const haystack = `${labels.join(' ')} ${rating} ${description}`.toLowerCase();
+  const tagRank = (pattern) =>
+    Math.max(
+      0,
+      ...tags.map((tag) =>
+        pattern.test(String(typeof tag === 'string' ? tag : tag?.name || '')) ? Number(tag?.rank) || 60 : 0,
+      ),
+    );
+  const rankedLevel = (pattern, fallback = 0) => {
+    const rank = tagRank(pattern);
+    if (!rank) return fallback;
+    if (rank >= 90) return 5;
+    if (rank >= 75) return 4;
+    if (rank >= 55) return 3;
+    return 2;
+  };
+  const has = (pattern) => pattern.test(haystack);
+  const set = (key, value) => {
+    content[key] = Math.max(content[key], value);
+  };
+
+  if (isAdult || has(/\b(rx|hentai)\b/)) {
+    set('sex', 5);
+    set('nudity', 5);
+  }
+  if (has(/\berotica\b|sexual content|explicit sex/)) set('sex', rankedLevel(/erotica|sexual content/i, 4));
+  if (has(/\becchi\b|suggestive/)) {
+    set('sex', 2);
+    set('nudity', 2);
+  }
+  if (has(/nudity|nude scenes?/)) set('nudity', rankedLevel(/nudity/i, 3));
+  if (has(/graphic violence|extreme violence|brutal violence/)) set('violence', 5);
+  else if (has(/\bviolence\b|martial arts|warfare/)) set('violence', rankedLevel(/violence|warfare/i, 3));
+  else if (has(/\baction\b|military/)) set('violence', 1);
+  if (has(/\bgore\b|gory|graphic dismemberment/)) {
+    set('gore', rankedLevel(/gore|dismemberment/i, 4));
+    set('violence', 4);
+  }
+  if (has(/body horror|torture|rape|sexual violence|suicide|self[- ]harm|human trafficking/))
+    set('disturbing', rankedLevel(/body horror|torture|rape|suicide|self.harm/i, 4));
+  else if (has(/psychological|horror|trauma|abuse/)) set('disturbing', 2);
+  if (/\br\+|r - 17\+|rated r\b/i.test(rating)) {
+    set('sex', 2);
+    set('violence', 2);
+    set('disturbing', 1);
+  }
+
+  content.tags = contentLabels(labels);
+  return content;
+}
+
 function fromAniListMedia(m, title) {
   if (!m) throw new Error('not-found');
   return {
@@ -336,6 +450,12 @@ function fromAniListMedia(m, title) {
     description: htmlToText(m.description || ''),
     studio: m.studios?.nodes?.[0]?.name || '',
     isAdult: !!m.isAdult,
+    content: estimateContentRatings({
+      isAdult: !!m.isAdult,
+      genres: m.genres || [],
+      tags: m.tags || [],
+      description: htmlToText(m.description || ''),
+    }),
   };
 }
 async function fetchAniList(query, variables) {
@@ -422,6 +542,14 @@ async function metaJikan(title) {
     isAdult:
       /rx|hentai/i.test(m.rating || '') ||
       (m.explicit_genres || []).some((x) => /hentai/i.test(x.name || '')),
+    content: estimateContentRatings({
+      isAdult:
+        /rx|hentai/i.test(m.rating || '') ||
+        (m.explicit_genres || []).some((x) => /hentai/i.test(x.name || '')),
+      rating: m.rating || '',
+      genres: [...(m.genres || []), ...(m.explicit_genres || []), ...(m.themes || [])].map((x) => x.name),
+      description: m.synopsis || '',
+    }),
   };
 }
 async function metaWiki(title) {
@@ -461,6 +589,7 @@ async function metaWiki(title) {
     siteUrl: m.fullurl || '',
     description: extract,
     studio: '',
+    content: estimateContentRatings({ description: extract }),
   };
 }
 async function metaTVMaze(title) {
@@ -486,6 +615,7 @@ async function metaTVMaze(title) {
     siteUrl: m.officialSite || m.url || '',
     description: htmlToText(m.summary || ''),
     studio: m.network?.name || m.webChannel?.name || '',
+    content: estimateContentRatings({ genres: m.genres || [], description: m.summary || '' }),
   };
   if (!data.cover) {
     try {
@@ -528,9 +658,21 @@ function cacheGet(kind, title) {
   if (d?.cover && !String(d.cover).startsWith('/covers/')) return null;
   if (d?.cover?.startsWith('/covers/') && !existsSync(join(COVER_DIR, d.cover.slice('/covers/'.length))))
     return null;
+  if (d && d.contentEstimateVersion !== 1) {
+    d.content = d.content
+      ? { ...d.content, tags: contentLabels(d.content.tags || []) }
+      : estimateContentRatings({
+          isAdult: !!d.isAdult,
+          genres: d.genres || [],
+          description: d.description || '',
+        });
+    d.contentEstimateVersion = 1;
+    persistCacheSoon();
+  }
   return d;
 }
 function cachePut(kind, title, data) {
+  if (data?.content) data.contentEstimateVersion = 1;
   metadataCache[cacheKey(kind, title)] = { ts: Date.now(), data };
   persistCacheSoon();
   return data;

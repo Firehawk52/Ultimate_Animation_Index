@@ -12,6 +12,7 @@
     meta: 'uai:metadata:v6',
     compact: 'uai:compact:v1',
     favorites: 'uai:favorites:v1',
+    ui: 'uai:ui-state:v1',
   };
   const $ = (s, r = document) => r.querySelector(s),
     $$ = (s, r = document) => [...r.querySelectorAll(s)];
@@ -29,11 +30,13 @@
     }
   };
   const save = (k, v) => localStorage.setItem(k, JSON.stringify(v));
+  const savedUI = load(STORE.ui, {});
+  const adultModes = ['all', 'ecchi', 'erotic', 'hentai', 'gore', 'violence', 'disturbing'];
   const state = {
     visible: PAGE_SIZE,
     compact: load(STORE.compact, false),
     tab: 'master',
-    adult: 'all',
+    adult: adultModes.includes(savedUI.adult) ? savedUI.adult : 'all',
     server: false,
     keyId: '',
     serverCovers: 0,
@@ -181,6 +184,46 @@
       o.textContent = v.toUpperCase();
       sel.append(o);
     }
+  }
+
+  const UI_VALUE_FIELDS = [
+    'searchInput',
+    'tierFilter',
+    'typeFilter',
+    'genreFilter',
+    'statusFilter',
+    'sortSelect',
+    'collectionSearch',
+    'franchiseSearch',
+    'favoriteSearch',
+  ];
+  const UI_CHECKBOX_FIELDS = ['hideCompleted', 'customOnly'];
+
+  function restoreUIState() {
+    for (const id of UI_VALUE_FIELDS) {
+      const control = $('#' + id);
+      const value = savedUI[id];
+      if (typeof value !== 'string') continue;
+      if (
+        control instanceof HTMLSelectElement &&
+        ![...control.options].some((option) => option.value === value)
+      )
+        continue;
+      control.value = value;
+    }
+    for (const id of UI_CHECKBOX_FIELDS) {
+      if (typeof savedUI[id] === 'boolean') $('#' + id).checked = savedUI[id];
+    }
+    $$('.adult-chip').forEach((button) =>
+      button.classList.toggle('active', button.dataset.adult === state.adult),
+    );
+  }
+
+  function saveUIState() {
+    const next = { adult: state.adult };
+    for (const id of UI_VALUE_FIELDS) next[id] = $('#' + id).value;
+    for (const id of UI_CHECKBOX_FIELDS) next[id] = $('#' + id).checked;
+    save(STORE.ui, next);
   }
 
   function filteredMaster() {
@@ -464,6 +507,7 @@
       updateStats();
       queueMetadata(filteredMaster().slice(0, state.visible), { priority: true });
       pumpMetadata();
+      hydrateMissingCustomMetadata();
     } catch {
       state.server = false;
       $('#securityState').classList.add('bad');
@@ -536,6 +580,8 @@
         api: x.api || 'none',
         lookupTitle: x.lookupTitle || x.title,
         externalId: String(x.externalId || ''),
+        genres: x.genres || '',
+        content: normalizedContent(x.content),
       }));
     $('#generateCodeBtn').disabled = true;
     $('#generateCodeBtn').textContent = 'SIGNING…';
@@ -609,6 +655,7 @@
       for (const t of payload.titles) {
         let existing = idMap.get(t.id) || findEquivalent(t, all);
         if (existing) {
+          if (existing.custom && !existing.addedByMe) applySharedCustomMetadata(existing, t);
           incomingMap.set(t.id, existing.id);
           mergedCount++;
           continue;
@@ -640,6 +687,7 @@
       save(STORE.sources, sources);
       populateFilters();
       renderAll();
+      hydrateMissingCustomMetadata();
       out.classList.add('good');
       out.textContent = `Verified. ${newCount} new title${newCount === 1 ? '' : 's'}, ${mergedCount} merged without duplicates, ${payload.opinions.length} opinions attached to “${label}”.`;
       toast(`UserList imported: ${label}`);
@@ -693,13 +741,16 @@
   }
   function customFromPayload(t, addedByMe) {
     const adult = (t.type || '').toLowerCase().includes('hentai');
+    const fallbackContent = adult
+      ? { sex: 5, nudity: 5, violence: 0, gore: 0, disturbing: 1, tags: ['Hentai', 'Adult Only'] }
+      : { sex: 0, nudity: 0, violence: 0, gore: 0, disturbing: 0, tags: [] };
     return {
       id: t.id,
       title: t.title,
       year: Number(t.year) || 0,
       type: t.type,
       origin: t.origin || 'Unknown',
-      genres: adult ? 'Adult, Hentai' : 'Custom addition',
+      genres: t.genres || (adult ? 'Adult, Hentai' : 'Custom addition'),
       tier: 'CUSTOM',
       rank: null,
       quality_band: 'CUSTOM',
@@ -708,11 +759,135 @@
       externalId: t.externalId || '',
       custom: true,
       addedByMe,
-      content: adult
-        ? { sex: 5, nudity: 5, violence: 0, gore: 0, disturbing: 1, tags: ['Hentai', 'Adult Only'] }
-        : { sex: 0, nudity: 0, violence: 0, gore: 0, disturbing: 0, tags: [] },
+      content: t.content ? normalizedContent(t.content) : fallbackContent,
       scores: { overall: 0, production: 0, story: 0, emotional: 0 },
     };
+  }
+
+  function normalizedContent(content = {}) {
+    const level = (key) => Math.max(0, Math.min(5, Math.round(Number(content[key]) || 0)));
+    const tags = Array.isArray(content.tags)
+      ? [
+          ...new Map(
+            content.tags.map((tag) => [String(tag).trim().toLowerCase(), String(tag).trim()]),
+          ).values(),
+        ]
+          .filter(Boolean)
+          .slice(0, 20)
+      : [];
+    return {
+      sex: level('sex'),
+      nudity: level('nudity'),
+      violence: level('violence'),
+      gore: level('gore'),
+      disturbing: level('disturbing'),
+      tags,
+    };
+  }
+
+  function applySharedCustomMetadata(target, incoming) {
+    target.title = incoming.title;
+    target.year = Number(incoming.year) || 0;
+    target.type = incoming.type;
+    target.origin = incoming.origin || 'Unknown';
+    target.genres = incoming.genres || target.genres || 'Custom addition';
+    target.api = incoming.api || target.api || 'none';
+    target.lookupTitle = incoming.lookupTitle || incoming.title;
+    target.externalId = incoming.externalId || '';
+    if (incoming.content) target.content = normalizedContent(incoming.content);
+  }
+
+  function customMetadataKinds(type = '', origin = '') {
+    const format = type.toLowerCase();
+    const place = origin.toLowerCase();
+    const asian = /japan|japanese|china|chinese|korea|korean/.test(place);
+    if (format.includes('western series')) return ['tvmaze', 'wiki', 'anilist'];
+    if (format.includes('western film')) return ['wiki', 'tvmaze', 'anilist'];
+    if (/ova|ona|donghua|hentai/.test(format) || asian) return ['anilist', 'wiki', 'tvmaze'];
+    if (format.includes('series')) return ['tvmaze', 'anilist', 'wiki'];
+    return ['wiki', 'anilist', 'tvmaze'];
+  }
+
+  function metadataMatchesTitle(title, data, year = 0) {
+    const target = norm(title);
+    const candidates = [data?.canonicalTitle, data?.altTitle].filter(Boolean).map(norm);
+    if (!target || !candidates.length) return false;
+    if (year && data?.year && Math.abs(Number(year) - Number(data.year)) > 1) return false;
+    const targetTokens = new Set(target.split(' ').filter(Boolean));
+    return candidates.some((candidate) => {
+      if (candidate === target) return true;
+      if (
+        Math.min(candidate.length, target.length) >= 5 &&
+        (candidate.includes(target) || target.includes(candidate))
+      )
+        return true;
+      const candidateTokens = new Set(candidate.split(' ').filter(Boolean));
+      const shared = [...targetTokens].filter((token) => candidateTokens.has(token)).length;
+      const union = new Set([...targetTokens, ...candidateTokens]).size;
+      return union > 0 && shared / union >= 0.6;
+    });
+  }
+
+  function contentIsEmpty(content) {
+    const value = normalizedContent(content);
+    return (
+      !value.tags.length && !['sex', 'nudity', 'violence', 'gore', 'disturbing'].some((key) => value[key])
+    );
+  }
+
+  async function findCustomMetadata(title, type, origin, year = 0) {
+    if (!state.server || NO_META) return null;
+    for (const kind of customMetadataKinds(type, origin)) {
+      try {
+        const response = await fetch(
+          `/api/resolve?kind=${encodeURIComponent(kind)}&title=${encodeURIComponent(title)}`,
+        );
+        const result = await response.json();
+        if (response.ok && result.ok && metadataMatchesTitle(title, result.data, year))
+          return { kind, data: result.data };
+      } catch {}
+    }
+    return null;
+  }
+
+  function applyResolvedCustomMetadata(x, match) {
+    if (!match?.data) return;
+    const data = match.data;
+    x.api = match.kind;
+    x.lookupTitle = x.title;
+    x.externalId = data.externalId || '';
+    if (!x.year && data.year) x.year = Number(data.year) || 0;
+    if ((!x.genres || x.genres === 'Custom addition') && Array.isArray(data.genres) && data.genres.length)
+      x.genres = data.genres.join(', ');
+    if (contentIsEmpty(x.content) && data.content) {
+      x.content = normalizedContent(data.content);
+      x.contentEstimated = true;
+    }
+    meta[x.id] = { ts: Date.now(), data };
+    save(STORE.custom, customTitles);
+    save(STORE.meta, meta);
+  }
+
+  async function refreshCustomMetadata(x, { force = false, silent = false } = {}) {
+    if (!x?.custom) return false;
+    if (!force && metaFresh(x.id) && meta[x.id]?.data?.content) return true;
+    const match = await findCustomMetadata(x.lookupTitle || x.title, x.type, x.origin, x.year);
+    if (!match) {
+      if (!silent) toast('No reliable metadata match found');
+      return false;
+    }
+    applyResolvedCustomMetadata(x, match);
+    refreshArtwork();
+    if (!silent) toast('Metadata and estimated content ratings updated');
+    return true;
+  }
+
+  async function hydrateMissingCustomMetadata() {
+    for (const x of customTitles) {
+      if (!state.server) return;
+      if (!metaFresh(x.id) || (contentIsEmpty(x.content) && !meta[x.id]?.data?.content))
+        await refreshCustomMetadata(x, { silent: true });
+    }
   }
 
   // Manual title resolution and deduplication
@@ -734,25 +909,17 @@
       out.querySelector('button').onclick = () => openDetail(pre.id);
       return;
     }
-    let kind = type.startsWith('Western series')
-        ? 'tvmaze'
-        : type.startsWith('Western film')
-          ? 'wiki'
-          : 'anilist',
-      resolved = null;
+    let match = null;
     out.textContent = 'Resolving title and checking canonical metadata…';
-    if (state.server) {
-      try {
-        const r = await fetch(
-          `/api/resolve?kind=${encodeURIComponent(kind)}&title=${encodeURIComponent(raw)}`,
-        );
-        const j = await r.json();
-        if (r.ok && j.ok) resolved = j.data;
-      } catch {}
-    }
-    const title = resolved?.canonicalTitle || raw,
+    if (state.server) match = await findCustomMetadata(raw, type, origin, year);
+    const resolved = match?.data || null,
+      kind = match?.kind || customMetadataKinds(type, origin)[0],
+      title = raw,
       finalYear = year || resolved?.year || 0;
-    const second = findEquivalent({ title, year: finalYear, type }, canonicalItems());
+    const second = findEquivalent(
+      { title: resolved?.canonicalTitle || title, year: finalYear, type },
+      canonicalItems(),
+    );
     if (second) {
       out.classList.add('bad');
       out.innerHTML = `Resolved to an existing title: <button class="inline-open" data-open-id="${esc(second.id)}">${esc(second.title)}</button>`;
@@ -779,8 +946,11 @@
       api: kind,
       lookupTitle: title,
       externalId: resolved?.externalId || '',
+      genres: Array.isArray(resolved?.genres) ? resolved.genres.join(', ') : '',
+      content: resolved?.content,
     };
     const x = customFromPayload(t, true);
+    if (resolved?.content && !contentIsEmpty(resolved.content)) x.contentEstimated = true;
     customTitles.push(x);
     save(STORE.custom, customTitles);
     if (resolved) meta[id] = { ts: Date.now(), data: resolved };
@@ -788,7 +958,8 @@
     populateFilters();
     renderAll();
     out.classList.add('good');
-    out.textContent = `Added “${title}” without changing the editorial master ranking.`;
+    out.innerHTML = `Added “${esc(title)}” without changing the editorial master ranking. <button class="inline-open" type="button">EDIT DETAILS</button>`;
+    out.querySelector('button').onclick = () => openDetail(id);
     $('#addTitleForm').reset();
     toast('Custom title added');
   }
@@ -800,6 +971,97 @@
       .map((b) => b.toString(16).padStart(2, '0'))
       .join('');
     return `c:${norm(title).replace(/ /g, '-').slice(0, 70) || 'title'}:${hex}`;
+  }
+
+  function customEditorHTML(x) {
+    const content = normalizedContent(x.content);
+    const formats = [
+      'Series',
+      'Film',
+      'OVA',
+      'ONA',
+      'Special',
+      'Donghua series',
+      'Western series',
+      'Western film',
+      'Adult / Hentai',
+    ];
+    if (x.type && !formats.includes(x.type)) formats.unshift(x.type);
+    const levels = [
+      ['Sexual content', 'sex'],
+      ['Nudity', 'nudity'],
+      ['Violence', 'violence'],
+      ['Gore', 'gore'],
+      ['Disturbing', 'disturbing'],
+    ];
+    return `<section class="custom-editor"><h4>Edit custom metadata</h4><p>These fields are included when this title is exported in a signed UserList. Provider-based content ratings are estimates and should be reviewed.</p><button id="refreshCustomMetadata" class="slash-button small" type="button">${x.contentEstimated ? 'REFRESH ESTIMATED METADATA' : 'FIND MISSING METADATA'}</button><div class="custom-editor-grid"><label class="field-label">TITLE<input id="customTitle" maxlength="180" value="${esc(x.title)}"></label><div class="field-row"><label class="field-label">YEAR<input id="customYear" type="number" min="0" max="2200" value="${Number(x.year) || ''}" placeholder="Unknown"></label><label class="field-label">FORMAT<select id="customType">${formats.map((type) => `<option ${x.type === type ? 'selected' : ''}>${esc(type)}</option>`).join('')}</select></label></div><label class="field-label">ORIGIN<input id="customOrigin" maxlength="80" value="${esc(x.origin || '')}" placeholder="Japan / US / China / …"></label><label class="field-label">GENRES / TAGS<textarea id="customGenres" maxlength="500" placeholder="Fantasy, Adventure, Drama">${esc(x.genres || '')}</textarea></label><label class="field-label">CONTENT LABELS<input id="customContentTags" maxlength="500" value="${esc(content.tags.join(', '))}" placeholder="Ecchi, Gore, Adult Only, …"></label><div class="custom-content-fields">${levels.map(([label, key]) => `<label>${esc(label)}<input id="customContent-${key}" type="number" min="0" max="5" step="1" value="${content[key]}"><span>/5</span></label>`).join('')}</div></div></section>`;
+  }
+
+  function parseCustomTags(raw) {
+    const tags = [];
+    const seen = new Set();
+    for (const part of String(raw).split(',')) {
+      const tag = part.trim();
+      if (!tag) continue;
+      if (tag.length > 40 || /[<> -]/.test(tag))
+        throw new Error('Each content label must be 40 safe characters or fewer.');
+      const key = tag.toLowerCase();
+      if (!seen.has(key)) {
+        seen.add(key);
+        tags.push(tag);
+      }
+    }
+    if (tags.length > 20) throw new Error('Use no more than 20 content labels.');
+    return tags;
+  }
+
+  function saveCustomMetadata(x) {
+    const title = $('#customTitle').value.trim();
+    const year = Number($('#customYear').value) || 0;
+    const type = $('#customType').value;
+    const origin = $('#customOrigin').value.trim() || 'Unknown';
+    const genres = $('#customGenres').value.trim();
+    const lookupChanged =
+      norm(title) !== norm(x.lookupTitle || x.title) || type !== x.type || norm(origin) !== norm(x.origin);
+    if (!title || title.length > 180 || /[<> -]/.test(title)) throw new Error('Enter a valid title.');
+    if (!Number.isInteger(year) || year < 0 || year > 2200) throw new Error('Enter a valid year.');
+    if (origin.length > 80 || /[<> -]/.test(origin)) throw new Error('Enter a valid origin.');
+    if (genres.length > 500 || /[<> -]/.test(genres))
+      throw new Error('Genres and tags must be 500 safe characters or fewer.');
+    const duplicate = findEquivalent(
+      { title, year, type },
+      canonicalItems().filter((item) => item.id !== x.id),
+    );
+    if (duplicate) throw new Error(`This matches the existing title “${duplicate.title}”.`);
+    const level = (key) => {
+      const value = Number($(`#customContent-${key}`).value);
+      if (!Number.isInteger(value) || value < 0 || value > 5)
+        throw new Error('Content ratings must be whole numbers from 0 to 5.');
+      return value;
+    };
+    x.title = title;
+    x.year = year;
+    x.type = type;
+    x.origin = origin;
+    x.genres = genres;
+    x.lookupTitle = title;
+    if (lookupChanged) {
+      x.api = customMetadataKinds(type, origin)[0];
+      x.externalId = '';
+      delete meta[x.id];
+      save(STORE.meta, meta);
+    }
+    x.content = {
+      sex: level('sex'),
+      nudity: level('nudity'),
+      violence: level('violence'),
+      gore: level('gore'),
+      disturbing: level('disturbing'),
+      tags: parseCustomTags($('#customContentTags').value),
+    };
+    x.contentEstimated = false;
+    save(STORE.custom, customTitles);
+    return lookupChanged;
   }
 
   // Detail dialog and personal progress
@@ -822,7 +1084,7 @@
       sc.overall ? `Overall ${sc.overall}` : '',
     ].filter(Boolean);
     $('#dialogBody').innerHTML =
-      `<div class="detail-hero">${bg ? `<img class="detail-bg" src="${esc(bg)}" alt="">` : ''}<div class="detail-heading"><div class="kicker">${x.rank ? `MASTER RANK #${String(x.rank).padStart(3, '0')}` : 'CUSTOM ADDITION'} // ${esc(x.tier || '')}</div><h2>${esc(x.title)}</h2></div></div><div class="detail-content"><div class="detail-facts">${facts.map((f) => `<span class="fact">${esc(f)}</span>`).join('')}</div><div class="detail-grid"><div>${m.description ? `<h4>Synopsis</h4><p>${esc(m.description)}</p>` : '<p class="metadata-wait">Synopsis will appear when metadata is available.</p>'}${x.watch_note ? `<div class="callout"><h4>Watch note</h4><p>${esc(x.watch_note)}</p></div>` : ''}${x.caveat ? `<div class="callout"><h4>Worth knowing</h4><p>${esc(x.caveat)}</p></div>` : ''}${m.siteUrl ? `<a class="external-link" href="${esc(m.siteUrl)}" target="_blank" rel="noopener">OPEN SOURCE ↗</a>` : ''}<h4>Content</h4>${contentGuide(x, false)}${ops.length ? `<h4>Imported opinions</h4><div class="source-opinion-list">${ops.map((o) => `<div class="source-opinion"><b>${esc(o.label)}</b><span class="${o.verdict === 'recommend' ? 'yes' : 'no'}">${o.verdict === 'recommend' ? 'RECOMMENDED' : 'NOT RECOMMENDED'}</span></div>`).join('')}</div>` : ''}</div><aside><div class="user-edit"><button id="modalFavorite" class="favorite-detail ${isFavorite(id) ? 'active' : ''}" type="button">${isFavorite(id) ? '♥ FAVORITE' : '♡ ADD TO FAVORITES'}</button><label>MY RECOMMENDATION</label><div class="verdict-row"><button class="verdict-btn rec ${verdict === 'recommend' ? 'active' : ''}" data-v="recommend">RECOMMEND</button><button class="verdict-btn no ${verdict === 'avoid' ? 'active' : ''}" data-v="avoid">DON'T RECOMMEND</button><button class="verdict-btn neutral ${!verdict ? 'active' : ''}" data-v="">NEUTRAL</button></div><label>WATCH STATUS</label><select id="modalStatus">${['Not started', 'Watching', 'Completed', 'On hold', 'Dropped'].map((s) => `<option ${p.status === s ? 'selected' : ''}>${s}</option>`).join('')}</select><label>MY RATING /10</label><input id="modalRating" type="number" min="0" max="10" step="0.5" value="${p.rating || ''}" placeholder="Unrated"><label>PRIVATE NOTE</label><textarea id="modalNote" maxlength="2000">${esc(p.note || '')}</textarea><button class="slash-button hot wide" id="saveDetail">SAVE LOCAL DATA</button></div></aside></div></div>`;
+      `<div class="detail-hero">${bg ? `<img class="detail-bg" src="${esc(bg)}" alt="">` : ''}<div class="detail-heading"><div class="kicker">${x.rank ? `MASTER RANK #${String(x.rank).padStart(3, '0')}` : 'CUSTOM ADDITION'} // ${esc(x.tier || '')}</div><h2>${esc(x.title)}</h2></div></div><div class="detail-content"><div class="detail-facts">${facts.map((f) => `<span class="fact">${esc(f)}</span>`).join('')}</div><div class="detail-grid"><div>${m.description ? `<h4>Synopsis</h4><p>${esc(m.description)}</p>` : '<p class="metadata-wait">Synopsis will appear when metadata is available.</p>'}${x.watch_note ? `<div class="callout"><h4>Watch note</h4><p>${esc(x.watch_note)}</p></div>` : ''}${x.caveat ? `<div class="callout"><h4>Worth knowing</h4><p>${esc(x.caveat)}</p></div>` : ''}${m.siteUrl ? `<a class="external-link" href="${esc(m.siteUrl)}" target="_blank" rel="noopener">OPEN SOURCE ↗</a>` : ''}<h4>Content</h4>${contentGuide(x, false)}${x.custom ? customEditorHTML(x) : ''}${ops.length ? `<h4>Imported opinions</h4><div class="source-opinion-list">${ops.map((o) => `<div class="source-opinion"><b>${esc(o.label)}</b><span class="${o.verdict === 'recommend' ? 'yes' : 'no'}">${o.verdict === 'recommend' ? 'RECOMMENDED' : 'NOT RECOMMENDED'}</span></div>`).join('')}</div>` : ''}</div><aside><div class="user-edit"><button id="modalFavorite" class="favorite-detail ${isFavorite(id) ? 'active' : ''}" type="button">${isFavorite(id) ? '♥ FAVORITE' : '♡ ADD TO FAVORITES'}</button><label>MY RECOMMENDATION</label><div class="verdict-row"><button class="verdict-btn rec ${verdict === 'recommend' ? 'active' : ''}" data-v="recommend">RECOMMEND</button><button class="verdict-btn no ${verdict === 'avoid' ? 'active' : ''}" data-v="avoid">DON'T RECOMMEND</button><button class="verdict-btn neutral ${!verdict ? 'active' : ''}" data-v="">NEUTRAL</button></div><label>WATCH STATUS</label><select id="modalStatus">${['Not started', 'Watching', 'Completed', 'On hold', 'Dropped'].map((s) => `<option ${p.status === s ? 'selected' : ''}>${s}</option>`).join('')}</select><label>MY RATING /10</label><input id="modalRating" type="number" min="0" max="10" step="0.5" value="${p.rating || ''}" placeholder="Unrated"><label>PRIVATE NOTE</label><textarea id="modalNote" maxlength="2000">${esc(p.note || '')}</textarea><button class="slash-button hot wide" id="saveDetail">${x.custom ? 'SAVE TITLE + LOCAL DATA' : 'SAVE LOCAL DATA'}</button></div></aside></div></div>`;
     $('#modalFavorite').onclick = () => {
       toggleFavorite(id);
       const b = $('#modalFavorite');
@@ -837,7 +1099,31 @@
         b.classList.add('active');
       }),
     );
+    if (x.custom) {
+      $('#refreshCustomMetadata').onclick = async () => {
+        const button = $('#refreshCustomMetadata');
+        button.disabled = true;
+        button.textContent = 'SEARCHING…';
+        const found = await refreshCustomMetadata(x, { force: true });
+        if (found) {
+          $('#detailDialog').close();
+          openDetail(id);
+        } else {
+          button.disabled = false;
+          button.textContent = 'FIND MISSING METADATA';
+        }
+      };
+    }
     $('#saveDetail').onclick = () => {
+      let metadataChanged = false;
+      if (x.custom) {
+        try {
+          metadataChanged = saveCustomMetadata(x);
+        } catch (error) {
+          toast(error.message);
+          return;
+        }
+      }
       progress[id] = {
         status: $('#modalStatus').value,
         rating: Number($('#modalRating').value) || 0,
@@ -850,9 +1136,11 @@
       $('#detailDialog').close();
       renderAll();
       toast('Saved locally');
+      if (metadataChanged) refreshCustomMetadata(x, { force: true, silent: true });
     };
     $('#detailDialog').showModal();
-    queueMetadata([x], { priority: true });
+    if (x.custom) refreshCustomMetadata(x, { silent: true });
+    else queueMetadata([x], { priority: true });
   }
 
   function metaFresh(id) {
@@ -865,6 +1153,7 @@
     if (NO_META) return;
     const add = [];
     for (const x of items || []) {
+      if (x?.custom) continue;
       if (!x?.id || !x.api || x.api === 'none' || metaFresh(x.id) || metaQueued.has(x.id)) continue;
       metaQueued.add(x.id);
       add.push(x);
@@ -1018,6 +1307,7 @@
   ['searchInput'].forEach((id) =>
     $('#' + id).addEventListener('input', () => {
       state.visible = PAGE_SIZE;
+      saveUIState();
       renderMaster();
     }),
   );
@@ -1032,6 +1322,7 @@
   ].forEach((id) =>
     $('#' + id).addEventListener('change', () => {
       state.visible = PAGE_SIZE;
+      saveUIState();
       renderMaster();
     }),
   );
@@ -1051,14 +1342,24 @@
     switchTab('userlist');
     setTimeout(() => $('#addTitleName').focus(), 50);
   });
-  $('#collectionSearch').addEventListener('input', renderCollections);
-  $('#franchiseSearch').addEventListener('input', renderFranchises);
-  $('#favoriteSearch').addEventListener('input', renderFavorites);
+  $('#collectionSearch').addEventListener('input', () => {
+    saveUIState();
+    renderCollections();
+  });
+  $('#franchiseSearch').addEventListener('input', () => {
+    saveUIState();
+    renderFranchises();
+  });
+  $('#favoriteSearch').addEventListener('input', () => {
+    saveUIState();
+    renderFavorites();
+  });
   $$('.adult-chip').forEach((b) =>
     b.addEventListener('click', () => {
       $$('.adult-chip').forEach((x) => x.classList.remove('active'));
       b.classList.add('active');
       state.adult = b.dataset.adult;
+      saveUIState();
       renderAdult();
     }),
   );
@@ -1088,6 +1389,7 @@
 
   // boot
   populateFilters();
+  restoreUIState();
   $('#viewToggle').textContent = state.compact ? '▤' : '▥';
   renderMaster({ noMeta: NO_META });
   renderCollections();

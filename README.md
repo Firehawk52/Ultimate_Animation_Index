@@ -192,7 +192,11 @@ tests the catalog without adding the generated file to Git.
 
 ## Covers and metadata
 
-The catalog works without live metadata. The server looks up covers and public metadata using AniList, Jikan, TVmaze and Wikipedia.
+The catalog works without live metadata. The server looks up covers and public metadata using AniList, Jikan,
+TVmaze and Wikipedia. Custom titles are matched conservatively across these providers; the user's title is never
+silently replaced by a provider result. When available, provider tags, genres and age classifications are also
+converted into editable 0–5 content-rating estimates. These estimates are deliberately conservative and should
+be reviewed by the user before sharing a UserList.
 
 When a cover is found, the server downloads it once and stores it locally in:
 
@@ -226,6 +230,7 @@ A shared UserList can contain:
 
 - Recommended / Not recommended marks
 - Missing titles added by the sender when those titles are needed by the list
+- Genres, content labels and five independent content-severity ratings for custom titles
 
 It does not contain:
 
@@ -240,6 +245,10 @@ The person importing the code chooses the source name locally.
 ### Tamper protection
 
 Each UserList is signed with Ed25519. The importer checks the signature and a strict schema before changing local data. A modified, malformed, oversized or foreign code is rejected without a partial import.
+
+The identifier after `UWL1.` is a public fingerprint used to select the installation
+key. It is not the private key and cannot be used to forge a signature. UserList
+payloads are readable rather than encrypted, but any edit invalidates the signature.
 
 The server creates its signing keys on first run in:
 

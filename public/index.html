@@ -16,7 +16,7 @@
       href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:ital,wght@0,600;0,700;0,800;1,700&family=Space+Grotesk:wght@400;500;600;700&display=swap"
       rel="stylesheet"
     />
-    <link rel="stylesheet" href="styles.css?v=4.2.1" />
+    <link rel="stylesheet" href="styles.css?v=4.4.0" />
   </head>
   <body>
     <div class="noise"></div>
@@ -217,7 +217,8 @@
             <h3>EXPORT YOUR USERLIST</h3>
             <p>
               Includes your <b>Recommended</b> and <b>Not recommended</b> marks, plus titles you added
-              yourself. Watch progress, ratings, favorites and private notes stay on this device.
+              yourself with their genres, content labels and severity ratings. Watch progress, personal
+              ratings, favorites and private notes stay on this device.
             </p>
             <div class="userlist-summary" id="userListSummary"></div>
             <button id="generateCodeBtn" class="slash-button hot wide">GENERATE SIGNED CODE</button>
@@ -252,7 +253,9 @@
             <h3>ADD A MISSING TITLE</h3>
             <p>
               Add a title that is missing from the main list. The site checks for an existing match before
-              creating anything new.
+              creating anything new. Open the title afterward to edit its genres, content labels and severity
+              ratings. Missing metadata and content-rating estimates are fetched from public providers when a
+              reliable title match is available.
             </p>
             <form id="addTitleForm">
               <label class="field-label"
@@ -323,6 +326,6 @@
     </dialog>
 
     <div class="toast" id="toast"></div>
-    <script src="app.js?v=4.2.1"></script>
+    <script src="app.js?v=4.4.0"></script>
   </body>
 </html>
