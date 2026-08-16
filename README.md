@@ -265,6 +265,26 @@ Runtime data in `.userlist-keys/`, `.cache/` and `covers/` is intentionally excl
 from Git. Do not force-add these folders: signing keys are private and cached metadata
 or artwork can be regenerated.
 
+## Third-party content and copyright
+
+This project indexes works created and owned by third parties. Titles, trademarks,
+provider metadata, descriptions, cover artwork and other referenced media remain the
+property of their respective owners. Their appearance in the index does not transfer
+ownership or grant a license to reuse them.
+
+The repository and application do not contain, download, stream or distribute films,
+episodes or any other video files. The system is an index only; runtime downloads are
+limited to metadata and cover artwork used to identify catalog entries.
+
+The application can download and cache cover artwork and public metadata from external
+providers at runtime. Generated caches and downloaded covers are excluded from Git, but
+documentation screenshots may display third-party artwork as part of the interface.
+These materials are included for identification and informational purposes only and are
+not covered by any license that may apply to the project's own source code.
+
+Operators and contributors are responsible for ensuring that their use and distribution
+of third-party material complies with applicable licenses, provider terms and local law.
+
 ## Duplicate handling
 
 A title exists only once in the local database.
