@@ -1,6 +1,6 @@
 import http from 'node:http';
 import { spawn } from 'node:child_process';
-import { readFile, writeFile, mkdir, stat } from 'node:fs/promises';
+import { readFile, writeFile, mkdir, stat, rename } from 'node:fs/promises';
 import { existsSync, readFileSync, writeFileSync, mkdirSync, readdirSync } from 'node:fs';
 import { extname, join, normalize, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -12,6 +12,12 @@ import {
   verify as cryptoVerify,
   createPublicKey,
 } from 'node:crypto';
+import { buildCatalog, validateCatalog } from './scripts/build-catalog.mjs';
+import {
+  applyCorrectionPackage,
+  parseCorrectionCode,
+  validateCorrectionPackage,
+} from './scripts/catalog-corrections.mjs';
 
 // Runtime paths and resource limits
 const __dirname = fileURLToPath(new URL('.', import.meta.url));
@@ -19,6 +25,7 @@ const PUBLIC = join(__dirname, 'public');
 const PRIVATE = join(__dirname, '.userlist-keys');
 const CACHE_DIR = join(__dirname, '.cache');
 const COVER_DIR = join(__dirname, 'covers');
+const CATALOG_SOURCE = join(__dirname, 'data', 'catalog-source.json');
 const PORT = Number(process.env.PORT || 8787);
 const USERLIST_SCHEMA = 3;
 const MAX_BODY = 1024 * 1024;
@@ -127,6 +134,28 @@ function isSameOriginRequest(req) {
   } catch {
     return false;
   }
+}
+
+function isLoopbackRequest(req) {
+  const address = req.socket?.remoteAddress || '';
+  return address === '127.0.0.1' || address === '::1' || address === '::ffff:127.0.0.1';
+}
+
+async function readCatalogSource() {
+  const catalog = JSON.parse(await readFile(CATALOG_SOURCE, 'utf8'));
+  return validateCatalog(catalog);
+}
+
+async function applyCatalogCorrectionCode(code) {
+  const current = await readCatalogSource();
+  const input = parseCorrectionCode(code);
+  const { catalog, correction } = applyCorrectionPackage(current, input);
+  validateCatalog(catalog);
+  const temporary = `${CATALOG_SOURCE}.next`;
+  await writeFile(temporary, `${JSON.stringify(catalog, null, 2)}\n`, 'utf8');
+  await rename(temporary, CATALOG_SOURCE);
+  buildCatalog();
+  return correction;
 }
 
 function restartServerAfterUpdate() {
@@ -1166,6 +1195,8 @@ export const server = http.createServer(async (req, res) => {
         format: 'UWL',
         version: PACKAGE_VERSION,
         updateToken: UPDATE_TOKEN,
+        catalogWriteEnabled: isLoopbackRequest(req),
+        catalogToken: isLoopbackRequest(req) ? UPDATE_TOKEN : '',
         userListSchema: USERLIST_SCHEMA,
         keyId: KEY_ID,
         artwork: warmState,
@@ -1176,6 +1207,31 @@ export const server = http.createServer(async (req, res) => {
           processed: warmState.done,
         },
       });
+    if (u.pathname === '/api/catalog/corrections/preview' && req.method === 'POST') {
+      const body = await readBody(req);
+      if (!exactKeys(body, new Set(['code'])) || typeof body.code !== 'string')
+        return send(res, 400, { ok: false, error: 'invalid-correction-code' });
+      const catalog = await readCatalogSource();
+      const correction = validateCorrectionPackage(parseCorrectionCode(body.code), catalog);
+      return send(res, 200, { ok: true, correction });
+    }
+    if (u.pathname === '/api/catalog/corrections/apply' && req.method === 'POST') {
+      if (
+        !isLoopbackRequest(req) ||
+        !isSameOriginRequest(req) ||
+        req.headers['x-uai-catalog-token'] !== UPDATE_TOKEN
+      )
+        return send(res, 403, { ok: false, error: 'catalog-write-forbidden' });
+      const body = await readBody(req);
+      if (!exactKeys(body, new Set(['code'])) || typeof body.code !== 'string')
+        return send(res, 400, { ok: false, error: 'invalid-correction-code' });
+      const correction = await applyCatalogCorrectionCode(body.code);
+      return send(res, 200, {
+        ok: true,
+        applied: correction.entries.length,
+        additions: correction.entries.filter((entry) => entry.operation === 'add').length,
+      });
+    }
     if (u.pathname === '/api/update' && req.method === 'POST') {
       if (!isSameOriginRequest(req) || req.headers['x-uai-update-token'] !== UPDATE_TOKEN)
         return send(res, 403, { ok: false, error: 'update-forbidden' });
@@ -1273,6 +1329,12 @@ export const server = http.createServer(async (req, res) => {
       'invalid-created',
       'body-too-large',
       'invalid-batch',
+      'invalid-correction-code',
+      'invalid-correction-package',
+      'unsupported-correction-package',
+      'unknown-catalog-title',
+      'catalog-correction-conflict',
+      'empty-correction-package',
     ].includes(msg)
       ? 400
       : 500;

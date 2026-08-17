@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { createHash, generateKeyPairSync, sign as cryptoSign } from 'node:crypto';
 import { after, before, test } from 'node:test';
+import { catalogSnapshot } from '../scripts/catalog-corrections.mjs';
 
 process.env.UAI_SKIP_WARM = '1';
 
@@ -43,6 +44,8 @@ test('health endpoint reports a ready signing service', async () => {
   assert.equal(body.format, 'UWL');
   assert.match(body.version, /^\d+\.\d+\.\d+$/);
   assert.match(body.updateToken, /^[A-Za-z0-9_-]{32}$/);
+  assert.equal(body.catalogWriteEnabled, true);
+  assert.match(body.catalogToken, /^[A-Za-z0-9_-]{32}$/);
   assert.equal(body.userListSchema, 3);
   assert.match(body.keyId, /^[a-f0-9]{16}$/);
 });
@@ -85,6 +88,44 @@ test('readable catalog JSON is served to the browser', async () => {
   assert.equal(response.status, 200);
   assert.match(raw, /\r?\n  "items": \[\r?\n/);
   assert.ok(catalog.items.length > 0);
+});
+
+test('catalog correction packages are previewed without changing data', async () => {
+  const catalog = await fetch(`${baseUrl}/catalog.json`).then((response) => response.json());
+  const title = catalog.items[0];
+  const base = catalogSnapshot(title);
+  const values = structuredClone(base);
+  values.content.sex = values.content.sex === 5 ? 4 : values.content.sex + 1;
+  const payload = {
+    format: 'ultimate-animation-index-corrections',
+    schema: 1,
+    createdAt: new Date().toISOString(),
+    catalogVersion: catalog.version,
+    entries: [{ operation: 'update', id: title.id, title: title.title, base, values }],
+  };
+  const code = `UAIC.${Buffer.from(JSON.stringify(payload)).toString('base64url')}`;
+  const response = await fetch(`${baseUrl}/api/catalog/corrections/preview`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ code }),
+  });
+  const result = await response.json();
+
+  assert.equal(response.status, 200);
+  assert.equal(result.ok, true);
+  assert.equal(result.correction.entries[0].values.content.sex, values.content.sex);
+});
+
+test('catalog writes reject requests without the local capability token', async () => {
+  const response = await fetch(`${baseUrl}/api/catalog/corrections/apply`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Origin: baseUrl },
+    body: JSON.stringify({ code: 'UAIC.invalid' }),
+  });
+  const result = await response.json();
+
+  assert.equal(response.status, 403);
+  assert.equal(result.error, 'catalog-write-forbidden');
 });
 
 test('unknown API routes return structured JSON', async () => {

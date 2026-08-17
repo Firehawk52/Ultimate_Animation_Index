@@ -2,6 +2,27 @@
 
 All notable changes to Ultimate Animation Index are documented here.
 
+## [2.1.0] - 2026-08-18
+
+### Community catalog corrections
+
+- Added editable Overall, Production, Story, Emotion and content ratings to every catalog title.
+- Added local correction drafts and portable `UAIC` review packages with validated before/after previews.
+- Added direct catalog saving for the computer running the local server without exposing write access in exports.
+- Allowed completed custom titles to become unranked catalog entries when every required rating is supplied.
+- Preserved custom-title quality scores in private backup and restore files.
+- Added strict server-side limits, conflict detection and atomic catalog regeneration for accepted changes.
+- Replaced duplicate `RUN` launchers with consistently named `start.bat`, `start.command` and `start.sh` files.
+
+## [2.0.13] - 2026-08-18
+
+### Clear completion states
+
+- Added a dedicated completion label above progress meters when a series or franchise reaches 100%.
+- Added a high-contrast completed badge and subtle lime frame to completed title covers.
+- Added a matching completed badge and highlighted state to fully watched franchise guides.
+- Added a restrained lime pulse to completed progress meters while preserving reduced-motion support.
+
 ## [2.0.12] - 2026-08-18
 
 ### Safer season completion

@@ -1,6 +1,6 @@
 {
   "name": "ultimate-animation-index",
-  "version": "2.0.12",
+  "version": "2.1.0",
   "description": "A self-hosted, ranked watchlist for anime and animation from around the world.",
   "homepage": "https://github.com/Firehawk52/ultimate-animation-index#readme",
   "repository": {
@@ -16,7 +16,7 @@
     "start": "node scripts/start.mjs",
     "update": "node scripts/update.mjs",
     "build:catalog": "node scripts/build-catalog.mjs",
-    "check": "node --check server.mjs && node --check public/app.js && node --check public/rating-format.js && node --check public/user-backup.js && node --check scripts/start.mjs && node --check scripts/update.mjs && node --check scripts/restart-after-update.mjs && node --check scripts/build-catalog.mjs",
+    "check": "node --check server.mjs && node --check public/app.js && node --check public/rating-format.js && node --check public/user-backup.js && node --check scripts/start.mjs && node --check scripts/update.mjs && node --check scripts/restart-after-update.mjs && node --check scripts/build-catalog.mjs && node --check scripts/catalog-corrections.mjs",
     "format": "prettier --write server.mjs scripts/*.mjs public/app.js public/rating-format.js public/user-backup.js public/index.html public/styles.css test/*.test.mjs package.json data/catalog-source.json docker-compose.yml README.md CHANGELOG.md CONTRIBUTING.md SECURITY.md .github/workflows/ci.yml",
     "format:check": "prettier --check server.mjs scripts/*.mjs public/app.js public/rating-format.js public/user-backup.js public/index.html public/styles.css test/*.test.mjs package.json data/catalog-source.json docker-compose.yml README.md CHANGELOG.md CONTRIBUTING.md SECURITY.md .github/workflows/ci.yml",
     "pretest": "npm run build:catalog",

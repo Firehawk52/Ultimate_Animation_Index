@@ -11,7 +11,7 @@ lists.
 
 There is no title limit. The list can keep growing as new and older work is added.
 
-See the [changelog](CHANGELOG.md) for release history and version 2.0 details.
+See the [changelog](CHANGELOG.md) for the full release history and version 2.1 details.
 
 ## Highlights
 
@@ -38,6 +38,15 @@ The landing view gives the full catalog a clear editorial hierarchy. Search, fil
 quality tiers and personal progress tools sit on top of the same canonical title list.
 
 ![Ultimate Animation Index master catalog](docs/screenshots/master-catalog.png)
+
+### Review catalog corrections before accepting them
+
+Every shared `UAIC` package is validated before the review appears. The workspace keeps
+the sender's proposed value beside the current catalog value, marks new-title candidates
+separately and leaves **Apply to this installation** as an explicit final action. Nothing
+is written while previewing a package.
+
+![Catalog correction package with before and after review](docs/screenshots/catalog-corrections-review.png)
 
 ### Content severity at a glance
 
@@ -75,10 +84,11 @@ npm start
 Open [http://localhost:8787](http://localhost:8787). On the first run, the catalog is
 generated automatically before the server starts.
 
-Windows and macOS users can also use the included launchers after cloning:
+You can also use the included start launchers after cloning:
 
-- Windows: double-click `RUN.bat`
-- macOS: double-click `RUN.command`
+- Windows: double-click `start.bat`
+- macOS: double-click `start.command`
+- Linux: run `./start.sh`
 
 ## How it works
 
@@ -131,14 +141,14 @@ caches, signing keys and installed packages are intentionally excluded from Git.
 ### Windows
 
 1. Install Node.js 20 or newer.
-2. Double-click `RUN.bat`.
+2. Double-click `start.bat`.
 3. Your default browser opens automatically when the server is ready.
 4. Keep the terminal window open while you use the site.
 
 ### macOS
 
 1. Install Node.js 20 or newer.
-2. Double-click `RUN.command`.
+2. Double-click `start.command`.
 3. Your default browser opens automatically when the server is ready.
 
 ### Linux
@@ -204,6 +214,7 @@ tests the catalog without adding the generated file to Git.
 - Recommended / Not recommended marks
 - Signed UserList sharing by text code
 - Custom title additions with global duplicate checking
+- Editable catalog ratings and portable correction-review packages
 - Local cover storage in `covers/`
 
 ## Covers and metadata
@@ -290,6 +301,25 @@ It does not contain:
 
 The person importing the code chooses the source name locally.
 
+### Catalog corrections
+
+Every fixed title exposes a catalog editor for Overall, Production, Story, Emotion and the
+five content-severity ratings. Changes can be written directly to the catalog source on the
+computer running the local server or saved as a portable `UAIC` review package.
+
+Custom titles can be proposed as new unranked catalog entries. Promotion requires all four
+quality scores and all five content ratings; incomplete candidates are rejected. Metadata,
+scores and ratings are validated again by the server before anything is written.
+
+Anyone can edit their own installation and export its changes. A shared package grants no
+access to the sender's computer, server or GitHub repository. The receiving user sees a
+before/after review and explicitly chooses whether to apply it. Only changes accepted into
+this repository's `main` branch become part of the catalog distributed to every user.
+
+Accepted changes update `data/catalog-source.json` atomically and regenerate the ignored
+browser copy. Stale packages are rejected when their original values no longer match the
+current catalog, preventing an older review from silently overwriting newer curation.
+
 ### Private backup and restore
 
 The UserList page can also download a private JSON backup. Unlike a signed sharing code,
@@ -298,7 +328,7 @@ this file is intended only for the owner and includes:
 - Watch statuses, ratings and private notes
 - Favorites and per-episode progress
 - Personal recommendation marks
-- Custom titles with editable metadata and content ratings
+- Custom titles with editable metadata, quality scores and content ratings
 - Imported UserList sources
 - Saved searches, filters, sorting and interface preferences
 

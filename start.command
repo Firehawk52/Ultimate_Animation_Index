@@ -12,12 +12,11 @@ fi
   i=0
   while [ "$i" -lt 80 ]; do
     if command -v curl >/dev/null 2>&1 && curl -fsS "$URL/api/health" >/dev/null 2>&1; then
-      if command -v open >/dev/null 2>&1; then open "$URL" >/dev/null 2>&1 || true
-      elif command -v xdg-open >/dev/null 2>&1; then xdg-open "$URL" >/dev/null 2>&1 || true
-      fi
+      open "$URL" >/dev/null 2>&1 || true
       exit 0
     fi
-    i=$((i+1)); sleep 0.25
+    i=$((i+1))
+    sleep 0.25
   done
 ) &
 printf '\nUltimate Animation Index\nStarting the site and opening it in your default browser...\nKeep this window open while you use the site.\nPress Ctrl+C to stop the local server.\n\n'

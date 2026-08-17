@@ -3,6 +3,7 @@
 node_modules/
 covers/
 public/catalog.json
+data/catalog-source.json.next
 .DS_Store
 Thumbs.db
 *.log

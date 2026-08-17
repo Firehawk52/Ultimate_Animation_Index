@@ -28,6 +28,7 @@ function userData() {
         custom: true,
         addedByMe: true,
         content: { sex: 0, nudity: 0, violence: 2, gore: 0, disturbing: 1, tags: ['Drama'] },
+        scores: { overall: 84, production: 8, story: 9, emotional: 7 },
       },
     ],
     sources: {
@@ -56,7 +57,7 @@ function userData() {
 test('private user backups preserve all supported local user data', () => {
   const backup = createUserBackup(userData(), {
     createdAt: '2026-08-17T12:00:00.000Z',
-    appVersion: '2.0.12',
+    appVersion: '2.1.0',
   });
   const restored = validateUserBackup(JSON.parse(JSON.stringify(backup)));
   const summary = summarizeUserData(restored.data);
@@ -69,6 +70,7 @@ test('private user backups preserve all supported local user data', () => {
   assert.equal(restored.data.ui.collectionSort, 'release');
   assert.equal(restored.data.ui.collectionSortOrder, 'desc');
   assert.equal(restored.data.ui.masterSortOrder, 'asc');
+  assert.equal(restored.data.customTitles[0].scores.overall, 84);
   assert.deepEqual(summary, {
     statuses: 1,
     ratings: 1,

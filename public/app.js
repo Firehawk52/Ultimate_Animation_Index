@@ -8,7 +8,7 @@ import {
 
 (async () => {
   'use strict';
-  const APP_VERSION = '2.0.12';
+  const APP_VERSION = '2.1.0';
   const catalogResponse = await fetch('catalog.json');
   if (!catalogResponse.ok) throw new Error(`Could not load catalog (${catalogResponse.status})`);
   const CAT = await catalogResponse.json();
@@ -24,6 +24,7 @@ import {
     ui: 'uai:ui-state:v1',
     episodes: 'uai:episode-progress:v1',
     series: 'uai:series-groups:v1',
+    catalogCorrections: 'uai:catalog-corrections:v1',
     dismissedUpdate: 'uai:dismissed-update:v1',
   };
   const $ = (s, r = document) => r.querySelector(s),
@@ -63,6 +64,8 @@ import {
     signerFormat: 'UWL',
     keyId: '',
     updateToken: '',
+    catalogWriteEnabled: false,
+    catalogToken: '',
     serverCovers: 0,
     serverCoverTotal: 0,
     serverCoverRunning: false,
@@ -74,7 +77,8 @@ import {
     meta = load(STORE.meta, {}),
     favorites = load(STORE.favorites, {}),
     episodeProgress = load(STORE.episodes, {}),
-    seriesGroups = load(STORE.series, {});
+    seriesGroups = load(STORE.series, {}),
+    catalogDrafts = load(STORE.catalogCorrections, {});
   const META_TTL = 1000 * 60 * 60 * 24 * 30;
   const NO_META = new URLSearchParams(location.search).has('nometa');
   const META_BATCH_SIZE = 12,
@@ -106,8 +110,17 @@ import {
     aliasMap.set(norm(x.title), x.id);
     (x.aliases || []).forEach((a) => aliasMap.set(norm(a), x.id));
   });
+  function itemWithCatalogDraft(item) {
+    const draft = catalogDrafts[item?.id];
+    if (!item || draft?.operation !== 'update') return item;
+    return {
+      ...item,
+      scores: { ...draft.values.scores },
+      content: { ...draft.values.content, tags: [...draft.values.content.tags] },
+    };
+  }
   function canonicalItems() {
-    const out = [...masterItems];
+    const out = masterItems.map(itemWithCatalogDraft);
     const seen = new Set(masterItems.map((x) => x.id));
     for (const c of customTitles) {
       if (!seen.has(c.id)) {
@@ -118,7 +131,8 @@ import {
     return out;
   }
   function itemById(id) {
-    return masterById.get(id) || customTitles.find((x) => x.id === id) || null;
+    const official = masterById.get(id);
+    return official ? itemWithCatalogDraft(official) : customTitles.find((x) => x.id === id) || null;
   }
   function pFor(id) {
     return progress[id] || { status: 'Not started', rating: 0, note: '' };
@@ -358,7 +372,8 @@ import {
     };
     const mark = marks[status] || marks['Not started'];
     const label = `Watch status: ${status}`;
-    return `<span class="status-mark status-${mark.slug}" role="img" aria-label="${esc(label)}" title="${esc(label)}"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">${mark.icon}</svg></span>`;
+    const text = status === 'Completed' ? '<b>COMPLETED</b>' : '';
+    return `<span class="status-mark status-${mark.slug}" role="img" aria-label="${esc(label)}" title="${esc(label)}"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">${mark.icon}</svg>${text}</span>`;
   }
 
   function cardHTML(x, { adult = false } = {}) {
@@ -379,7 +394,7 @@ import {
       : '';
     const fav = isFavorite(x.id);
     const content = adult ? contentGuide(x, true) : '';
-    return `<article class="title-card" data-id="${esc(x.id)}" tabindex="0">
+    return `<article class="title-card ${p.status === 'Completed' ? 'is-completed' : ''}" data-id="${esc(x.id)}" tabindex="0">
       <div class="cover">${cover ? `<img loading="lazy" src="${esc(cover)}" alt="${esc(x.title)} cover">` : `<div class="cover-placeholder">${esc(initials(x.title))}</div>`}<span class="rank">${rank}</span><span class="tier">${esc(qualityRatingLabel(x.tier, state.ratingFormat))}</span><button class="favorite-toggle ${fav ? 'active' : ''}" data-fav-id="${esc(x.id)}" type="button" aria-label="${fav ? 'Remove from favorites' : 'Add to favorites'}" title="${fav ? 'Remove from favorites' : 'Add to favorites'}">${fav ? '♥' : '♡'}</button>${statusMarkHTML(p.status)}${verdictBadge}</div>
       <div class="card-body"><div class="card-meta">${esc(displayType(x).toUpperCase())} // ${esc(liveYear(x))} // ${esc((m.studio || x.origin || '').toUpperCase())}</div><h3>${esc(x.title)}</h3>
       <div class="tag-row">${tags.map((g) => `<span class="tag">${esc(g)}</span>`).join('')}</div>${sourceBadgesHTML(x.id)}${content}
@@ -728,6 +743,7 @@ import {
 
   function episodeTrackerHTML(owner, group, variant = 'detail') {
     const groupStats = groupEpisodeStats(group);
+    const completed = Boolean(groupStats.total && groupStats.watched === groupStats.total);
     const labels = trackerSeasonLabels(group.entries);
     const firstIncomplete = Math.max(
       0,
@@ -740,7 +756,8 @@ import {
     const liveStatus = seriesGroupNeedsRefresh(group)
       ? '<span class="series-live-status"><i></i>RELEASING // CHECKED ON OPEN</span>'
       : '';
-    return `<section class="episode-tracker ${variant === 'franchise' ? 'franchise-tracker' : ''}"><header class="episode-tracker-head"><div><span>UNIFIED SERIES PROGRESS</span><h4>${esc(owner.title)}</h4>${liveStatus}</div><div class="episode-total"><b>${groupStats.watched}<i>/</i>${groupStats.total}</b><span>EPISODES WATCHED</span></div></header><div class="episode-overview">${episodeProgressMeterHTML(percentage / 100, 'episode-overview-meter')}<b>${percentage}%</b></div><div class="episode-key" aria-label="Episode status legend"><span class="unwatched">UNWATCHED</span><span class="watching">WATCHING</span><span class="watched">WATCHED</span></div><div class="season-stack">${group.entries
+    const completionLabel = variant === 'franchise' ? 'FRANCHISE COMPLETED' : 'SERIES COMPLETED';
+    return `<section class="episode-tracker ${variant === 'franchise' ? 'franchise-tracker' : ''} ${completed ? 'is-complete' : ''}"><header class="episode-tracker-head"><div><span>${variant === 'franchise' ? 'FRANCHISE PROGRESS' : 'UNIFIED SERIES PROGRESS'}</span><h4>${esc(owner.title)}</h4>${liveStatus}</div><div class="episode-total"><b>${groupStats.watched}<i>/</i>${groupStats.total}</b><span>EPISODES WATCHED</span></div></header><div class="episode-overview ${completed ? 'is-complete' : ''}">${completed ? `<span class="episode-complete-label"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="m4.5 10.5 3.2 3.2 7.8-8"></path></svg>${completionLabel}</span>` : ''}${episodeProgressMeterHTML(percentage / 100, 'episode-overview-meter')}<b>${percentage}%</b></div><div class="episode-key" aria-label="Episode status legend"><span class="unwatched">UNWATCHED</span><span class="watching">WATCHING</span><span class="watched">WATCHED</span></div><div class="season-stack">${group.entries
       .map((entry, index) => {
         const stats = entryEpisodeStats(entry);
         const state =
@@ -856,6 +873,7 @@ import {
     mount.dataset.episodeOwner = owner.id;
     mount.dataset.episodeVariant = variant;
     mount.innerHTML = episodeTrackerHTML(owner, group, variant);
+    if (variant === 'franchise') syncFranchiseCompletionState(mount, group);
     $$('[data-episode-action]', mount).forEach((button) =>
       button.addEventListener('click', (event) => {
         event.preventDefault();
@@ -948,6 +966,20 @@ import {
     return null;
   }
 
+  function franchiseCompletionBadgeHTML() {
+    return '<span class="franchise-completion" hidden><svg viewBox="0 0 20 20" aria-hidden="true"><path d="m4.5 10.5 3.2 3.2 7.8-8"></path></svg>COMPLETE</span>';
+  }
+
+  function syncFranchiseCompletionState(mount, group) {
+    const details = mount.closest('details.franchise');
+    if (!details) return;
+    const stats = groupEpisodeStats(group);
+    const completed = Boolean(stats.total && stats.watched === stats.total);
+    details.classList.toggle('is-completed', completed);
+    const badge = $('.franchise-completion', details);
+    if (badge) badge.hidden = !completed;
+  }
+
   function renderFranchises() {
     const q = $('#franchiseSearch').value.trim().toLowerCase();
     const arr = CAT.franchises.filter(
@@ -957,9 +989,15 @@ import {
     $('#franchiseStack').innerHTML = arr
       .map((f, i) => {
         const representative = franchiseRepresentative(f);
-        return `<details class="franchise" ${representative ? `data-series-owner="${esc(representative.id)}"` : ''}><summary><span class="franchise-no">${String(i + 1).padStart(2, '0')}</span><h3>${esc(f.name)}</h3><span class="franchise-chevron">+</span></summary><div class="franchise-body"><p class="franchise-summary">${esc(f.summary)}</p>${representative ? `<div class="episode-tracker-mount franchise-episode-mount" data-episode-owner="${esc(representative.id)}" data-episode-variant="franchise"></div>` : ''}${f.orders.map((o) => `<section class="order-block"><h4>${esc(o.label)}</h4>${o.note ? `<p class="order-note">${esc(o.note)}</p>` : ''}<div class="steps">${o.steps.map((s) => `<div class="step"><span class="step-n">${esc(s.n)}</span><span class="step-title">${esc(s.title)}${s.note ? `<small class="step-note">${esc(s.note)}</small>` : ''}</span><span class="flag ${esc(s.flag)}">${esc(s.flag)}</span></div>`).join('')}</div></section>`).join('')}</div></details>`;
+        const cachedGroup = representative ? cachedSeriesGroup(representative) : null;
+        const cachedStats = groupEpisodeStats(cachedGroup);
+        const completed = Boolean(cachedStats.total && cachedStats.watched === cachedStats.total);
+        return `<details class="franchise ${completed ? 'is-completed' : ''}" ${representative ? `data-series-owner="${esc(representative.id)}"` : ''}><summary><span class="franchise-no">${String(i + 1).padStart(2, '0')}</span><h3>${esc(f.name)}</h3>${franchiseCompletionBadgeHTML()}<span class="franchise-chevron">+</span></summary><div class="franchise-body"><p class="franchise-summary">${esc(f.summary)}</p>${representative ? `<div class="episode-tracker-mount franchise-episode-mount" data-episode-owner="${esc(representative.id)}" data-episode-variant="franchise"></div>` : ''}${f.orders.map((o) => `<section class="order-block"><h4>${esc(o.label)}</h4>${o.note ? `<p class="order-note">${esc(o.note)}</p>` : ''}<div class="steps">${o.steps.map((s) => `<div class="step"><span class="step-n">${esc(s.n)}</span><span class="step-title">${esc(s.title)}${s.note ? `<small class="step-note">${esc(s.note)}</small>` : ''}</span><span class="flag ${esc(s.flag)}">${esc(s.flag)}</span></div>`).join('')}</div></section>`).join('')}</div></details>`;
       })
       .join('');
+    $$('.franchise.is-completed .franchise-completion', $('#franchiseStack')).forEach(
+      (badge) => (badge.hidden = false),
+    );
     $$('details.franchise[data-series-owner]', $('#franchiseStack')).forEach((details) =>
       details.addEventListener('toggle', () => {
         if (!details.open || details.dataset.seriesLoaded) return;
@@ -982,6 +1020,8 @@ import {
       state.signerFormat = j.format || 'UWL';
       state.keyId = j.keyId || '';
       state.updateToken = j.updateToken || '';
+      state.catalogWriteEnabled = Boolean(j.catalogWriteEnabled);
+      state.catalogToken = j.catalogToken || '';
       state.serverCovers = Number(j.covers?.cached) || 0;
       state.serverCoverTotal = Number(j.covers?.total) || masterItems.length;
       state.serverCoverRunning = !!j.covers?.running;
@@ -994,12 +1034,16 @@ import {
       queueMetadata(filteredMaster().slice(0, state.visible), { priority: true });
       pumpMetadata();
       hydrateMissingCustomMetadata();
+      renderCorrectionWorkspace();
     } catch {
       state.server = false;
       state.signerCompatible = false;
+      state.catalogWriteEnabled = false;
+      state.catalogToken = '';
       $('#securityState').classList.add('bad');
       $('#securityState').innerHTML =
         '<b>USERLIST SIGNING OFFLINE</b><span>Start the included server to create or verify signed UserList codes.</span>';
+      renderCorrectionWorkspace();
     }
   }
   async function checkForUpdates() {
@@ -1243,6 +1287,7 @@ import {
       'invalid-episode-state': 'The backup contains an invalid episode state.',
       'too-many-episode-states': 'The backup contains too many episode states.',
       'invalid-custom-titles': 'The backup contains invalid custom titles.',
+      'invalid-catalog-score': 'The backup contains an invalid custom-title quality score.',
       'invalid-import-mode': 'Choose a valid import mode.',
     };
     if (error instanceof SyntaxError || /JSON|Unexpected token|Unexpected end/i.test(code))
@@ -1497,7 +1542,12 @@ import {
       custom: true,
       addedByMe,
       content: t.content ? normalizedContent(t.content) : fallbackContent,
-      scores: { overall: 0, production: 0, story: 0, emotional: 0 },
+      scores: {
+        overall: Math.max(0, Math.min(100, Number(t.scores?.overall) || 0)),
+        production: Math.max(0, Math.min(10, Number(t.scores?.production) || 0)),
+        story: Math.max(0, Math.min(10, Number(t.scores?.story) || 0)),
+        emotional: Math.max(0, Math.min(10, Number(t.scores?.emotional) || 0)),
+      },
     };
   }
 
@@ -1750,6 +1800,322 @@ import {
     return `<section class="custom-editor"><h4>Edit custom metadata</h4><p>These fields are included when this title is exported in a signed UserList. Provider-based content ratings are estimates and should be reviewed.</p><button id="refreshCustomMetadata" class="slash-button small" type="button">${x.contentEstimated ? 'REFRESH ESTIMATED METADATA' : 'FIND MISSING METADATA'}</button><div class="custom-editor-grid"><label class="field-label">TITLE<input id="customTitle" maxlength="180" value="${esc(x.title)}"></label><div class="field-row"><label class="field-label">YEAR<input id="customYear" type="number" min="0" max="2200" value="${Number(x.year) || ''}" placeholder="Unknown"></label><label class="field-label">FORMAT<select id="customType">${formats.map((type) => `<option ${x.type === type ? 'selected' : ''}>${esc(type)}</option>`).join('')}</select></label></div><label class="field-label">ORIGIN<input id="customOrigin" maxlength="80" value="${esc(x.origin || '')}" placeholder="Japan / US / China / …"></label><label class="field-label">GENRES / TAGS<textarea id="customGenres" maxlength="500" placeholder="Fantasy, Adventure, Drama">${esc(x.genres || '')}</textarea></label><label class="field-label">CONTENT LABELS<input id="customContentTags" maxlength="500" value="${esc(content.tags.join(', '))}" placeholder="Ecchi, Gore, Adult Only, …"></label><div class="custom-content-fields">${levels.map(([label, key]) => `<label>${esc(label)}<input id="customContent-${key}" type="number" min="0" max="5" step="1" value="${content[key]}"><span>/5</span></label>`).join('')}</div></div></section>`;
   }
 
+  const CATALOG_SCORE_FIELDS = [
+    ['Overall', 'overall', 100],
+    ['Production', 'production', 10],
+    ['Story', 'story', 10],
+    ['Emotion', 'emotional', 10],
+  ];
+  const CATALOG_CONTENT_FIELDS = [
+    ['Sexual content', 'sex'],
+    ['Nudity', 'nudity'],
+    ['Violence', 'violence'],
+    ['Gore', 'gore'],
+    ['Disturbing', 'disturbing'],
+  ];
+
+  function catalogScoreFieldsHTML(scores = {}, prefix = 'catalogScore') {
+    return `<div class="catalog-score-fields">${CATALOG_SCORE_FIELDS.map(([label, key, maximum]) => `<label>${esc(label)}<input id="${prefix}-${key}" type="number" min="1" max="${maximum}" step="1" value="${Number(scores[key]) || ''}" required><span>/${maximum}</span></label>`).join('')}</div>`;
+  }
+
+  function catalogContentFieldsHTML(content = {}, prefix = 'catalogContent') {
+    const normalized = normalizedContent(content);
+    return `<label class="field-label">CONTENT LABELS<input id="${prefix}-tags" maxlength="500" value="${esc(normalized.tags.join(', '))}" placeholder="Ecchi, Gore, Adult Only, …"></label><div class="custom-content-fields">${CATALOG_CONTENT_FIELDS.map(([label, key]) => `<label>${esc(label)}<input id="${prefix}-${key}" type="number" min="0" max="5" step="1" value="${normalized[key]}" required><span>/5</span></label>`).join('')}</div>`;
+  }
+
+  function catalogCorrectionEditorHTML(x) {
+    const pending = Boolean(catalogDrafts[x.id]);
+    return `<section class="catalog-editor ${pending ? 'has-draft' : ''}"><div class="catalog-editor-head"><div><span>CURATED DATA</span><h4>Edit catalog ratings</h4></div><b>${pending ? 'DRAFT SAVED' : 'CATALOG VALUES'}</b></div><p>Changes can be saved to this installation or added to a correction package for review and sharing.</p>${catalogScoreFieldsHTML(x.scores)}${catalogContentFieldsHTML(x.content)}<div class="catalog-editor-actions"><button id="saveCatalogDraft" class="slash-button wide" type="button">SAVE TO REVIEW PACKAGE</button>${state.catalogWriteEnabled ? '<button id="applyCatalogDirect" class="slash-button hot wide" type="button">SAVE TO THIS INSTALLATION</button>' : ''}</div><div id="catalogEditorResult" class="import-result"></div></section>`;
+  }
+
+  function customPromotionHTML(x) {
+    const pending = Boolean(catalogDrafts[x.id]);
+    return `<section class="catalog-editor promotion-editor ${pending ? 'has-draft' : ''}"><div class="catalog-editor-head"><div><span>CATALOG CANDIDATE</span><h4>Promote custom title</h4></div><b>${pending ? 'READY FOR REVIEW' : 'MISSING QUALITY SCORES'}</b></div><p>All four quality scores and all five content ratings are required before a custom title can become part of the installation catalog.</p>${catalogScoreFieldsHTML(x.scores, 'promotionScore')}<div class="catalog-editor-actions"><button id="stageCustomPromotion" class="slash-button wide" type="button">ADD TO REVIEW PACKAGE</button>${state.catalogWriteEnabled ? '<button id="applyCustomDirect" class="slash-button hot wide" type="button">ADD TO THIS INSTALLATION</button>' : ''}</div><div id="promotionResult" class="import-result"></div></section>`;
+  }
+
+  function readCatalogScores(prefix) {
+    return Object.fromEntries(
+      CATALOG_SCORE_FIELDS.map(([, key, maximum]) => {
+        const value = Number($(`#${prefix}-${key}`).value);
+        if (!Number.isInteger(value) || value < 1 || value > maximum)
+          throw new Error(`Complete every quality score from 1 to ${maximum}.`);
+        return [key, value];
+      }),
+    );
+  }
+
+  function readCatalogContent(prefix) {
+    const content = {};
+    for (const [, key] of CATALOG_CONTENT_FIELDS) {
+      const value = Number($(`#${prefix}-${key}`).value);
+      if (!Number.isInteger(value) || value < 0 || value > 5)
+        throw new Error('Content ratings must be whole numbers from 0 to 5.');
+      content[key] = value;
+    }
+    content.tags = parseCustomTags($(`#${prefix}-tags`).value);
+    return content;
+  }
+
+  function catalogSnapshotForBrowser(item) {
+    return {
+      scores: Object.fromEntries(
+        CATALOG_SCORE_FIELDS.map(([, key]) => [key, Number(item.scores?.[key]) || 0]),
+      ),
+      content: normalizedContent(item.content),
+    };
+  }
+
+  function saveCatalogDraft(entry) {
+    catalogDrafts[entry.id] = entry;
+    save(STORE.catalogCorrections, catalogDrafts);
+    renderCorrectionWorkspace();
+  }
+
+  function stageOfficialCorrection(x) {
+    const official = masterById.get(x.id);
+    if (!official) throw new Error('The official catalog title could not be found.');
+    const entry = {
+      operation: 'update',
+      id: official.id,
+      title: official.title,
+      base: catalogSnapshotForBrowser(official),
+      values: {
+        scores: readCatalogScores('catalogScore'),
+        content: readCatalogContent('catalogContent'),
+      },
+    };
+    if (JSON.stringify(entry.base) === JSON.stringify(entry.values))
+      throw new Error('Change at least one rating before saving.');
+    saveCatalogDraft(entry);
+    return entry;
+  }
+
+  function stageCustomPromotion(x) {
+    saveCustomMetadata(x);
+    x.scores = readCatalogScores('promotionScore');
+    save(STORE.custom, customTitles);
+    const entry = {
+      operation: 'add',
+      id: x.id,
+      title: x.title,
+      base: null,
+      values: {
+        year: Number(x.year) || 0,
+        type: x.type || 'Series',
+        origin: x.origin || 'Unknown',
+        api: ['anilist', 'tvmaze', 'wiki'].includes(x.api) ? x.api : 'none',
+        lookupTitle: x.lookupTitle || x.title,
+        externalId: String(x.externalId || ''),
+        genres: x.genres || '',
+        scores: { ...x.scores },
+        content: normalizedContent(x.content),
+      },
+    };
+    saveCatalogDraft(entry);
+    return entry;
+  }
+
+  function correctionCode(entries = Object.values(catalogDrafts)) {
+    if (!entries.length) throw new Error('Add at least one correction first.');
+    const payload = {
+      format: 'ultimate-animation-index-corrections',
+      schema: 1,
+      createdAt: new Date().toISOString(),
+      catalogVersion: Number(CAT.version) || 1,
+      entries,
+    };
+    const bytes = new TextEncoder().encode(JSON.stringify(payload));
+    let binary = '';
+    for (const byte of bytes) binary += String.fromCharCode(byte);
+    return `UAIC.${btoa(binary).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/g, '')}`;
+  }
+
+  async function applyCorrectionEntries(entries, { keepForExport = false } = {}) {
+    if (!state.catalogWriteEnabled || !state.catalogToken)
+      throw new Error('Direct catalog saving is only available on the computer running the server.');
+    const response = await fetch('/api/catalog/corrections/apply', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-UAI-Catalog-Token': state.catalogToken,
+      },
+      body: JSON.stringify({ code: correctionCode(entries) }),
+    });
+    const result = await response.json();
+    if (!response.ok || !result.ok) throw new Error(humanCorrectionError(result.error));
+    for (const entry of entries) {
+      if (keepForExport) catalogDrafts[entry.id] = entry;
+      else delete catalogDrafts[entry.id];
+      if (entry.operation === 'add') customTitles = customTitles.filter((title) => title.id !== entry.id);
+    }
+    save(STORE.catalogCorrections, catalogDrafts);
+    save(STORE.custom, customTitles);
+    sessionStorage.setItem(
+      'uai:catalog-import-message',
+      `${result.applied} catalog change${result.applied === 1 ? '' : 's'} saved`,
+    );
+    location.reload();
+  }
+
+  let reviewedCorrection = null;
+
+  function humanCorrectionError(code) {
+    const messages = {
+      'invalid-correction-code': 'This is not a valid correction package.',
+      'invalid-correction-package': 'The package contains missing, unsafe or out-of-range data.',
+      'unsupported-correction-package': 'This correction package version is not supported.',
+      'unknown-catalog-title': 'The package refers to a title that is not in this catalog.',
+      'catalog-correction-conflict': 'The catalog has changed since this package was created.',
+      'empty-correction-package': 'The package does not change any catalog values.',
+      'catalog-write-forbidden': 'Direct saving is only available on the computer running the server.',
+    };
+    return messages[code] || 'The correction package could not be processed.';
+  }
+
+  function correctionFieldLabel(group, key) {
+    const labels = {
+      overall: 'Overall',
+      production: 'Production',
+      story: 'Story',
+      emotional: 'Emotion',
+      sex: 'Sexual content',
+      nudity: 'Nudity',
+      violence: 'Violence',
+      gore: 'Gore',
+      disturbing: 'Disturbing content',
+      tags: 'Content labels',
+    };
+    return labels[key] || `${group} ${key}`;
+  }
+
+  function correctionValue(value) {
+    return Array.isArray(value) ? value.join(', ') || 'None' : String(value);
+  }
+
+  function correctionChangesHTML(entry) {
+    if (entry.operation === 'add')
+      return `<article class="correction-review-entry addition"><header><span>NEW CATALOG TITLE</span><h4>${esc(entry.title)}</h4></header><div class="correction-new-meta"><span>${esc(entry.values.type)}</span><span>${entry.values.year || 'YEAR UNKNOWN'}</span><span>${esc(entry.values.origin)}</span></div><div class="correction-diff-labels"><span>FIELD</span><span>BEFORE</span><i>AFTER</i></div>${Object.entries(
+        entry.values.scores,
+      )
+        .map(
+          ([key, value]) =>
+            `<div class="correction-diff"><b>${esc(correctionFieldLabel('scores', key))}</b><span>NOT IN CATALOG</span><i>${esc(value)}</i></div>`,
+        )
+        .join('')}${Object.entries(entry.values.content)
+        .map(
+          ([key, value]) =>
+            `<div class="correction-diff"><b>${esc(correctionFieldLabel('content', key))}</b><span>NOT IN CATALOG</span><i>${esc(correctionValue(value))}</i></div>`,
+        )
+        .join('')}</article>`;
+    const changes = [];
+    for (const group of ['scores', 'content']) {
+      for (const [key, next] of Object.entries(entry.values[group])) {
+        const before = entry.base[group][key];
+        if (JSON.stringify(before) === JSON.stringify(next)) continue;
+        changes.push(
+          `<div class="correction-diff"><b>${esc(correctionFieldLabel(group, key))}</b><span>${esc(correctionValue(before))}</span><i>${esc(correctionValue(next))}</i></div>`,
+        );
+      }
+    }
+    return `<article class="correction-review-entry"><header><span>RATING CORRECTION</span><h4>${esc(entry.title)}</h4></header><div class="correction-diff-labels"><span>FIELD</span><span>BEFORE</span><i>AFTER</i></div>${changes.join('')}</article>`;
+  }
+
+  function renderCorrectionWorkspace() {
+    const summary = $('#correctionDraftSummary');
+    if (!summary) return;
+    const entries = Object.values(catalogDrafts);
+    const additions = entries.filter((entry) => entry.operation === 'add').length;
+    summary.innerHTML = `<span><b>${entries.length}</b><small>TOTAL DRAFTS</small></span><span><b>${entries.length - additions}</b><small>RATING EDITS</small></span><span><b>${additions}</b><small>NEW TITLES</small></span>`;
+    $('#correctionDraftList').innerHTML = entries.length
+      ? entries
+          .map(
+            (entry) =>
+              `<div class="correction-draft"><div><b>${esc(entry.title)}</b><span>${entry.operation === 'add' ? 'NEW CATALOG TITLE' : 'RATING CORRECTION'}</span></div><button type="button" data-remove-correction="${esc(entry.id)}">REMOVE</button></div>`,
+          )
+          .join('')
+      : '<div class="empty-state">Edit a catalog title to begin a review package.</div>';
+    $$('[data-remove-correction]', $('#correctionDraftList')).forEach((button) =>
+      button.addEventListener('click', () => {
+        delete catalogDrafts[button.dataset.removeCorrection];
+        save(STORE.catalogCorrections, catalogDrafts);
+        renderCorrectionWorkspace();
+        renderAll();
+      }),
+    );
+    $('#generateCorrectionCode').disabled = !entries.length;
+    $('#clearCorrectionDrafts').disabled = !entries.length;
+    const apply = $('#applyReviewedCorrections');
+    if (apply) {
+      apply.disabled = !reviewedCorrection || !state.catalogWriteEnabled;
+      apply.title = state.catalogWriteEnabled
+        ? 'Apply the validated package to this installation'
+        : 'Open the site on the computer running the server to apply changes';
+    }
+  }
+
+  function generateCorrectionPackage() {
+    try {
+      $('#correctionExportCode').value = correctionCode();
+      toast('Correction review package generated');
+    } catch (error) {
+      toast(error.message);
+    }
+  }
+
+  async function previewCorrectionPackage() {
+    const code = $('#correctionImportCode').value.trim();
+    const result = $('#correctionImportResult');
+    const mount = $('#correctionReviewResult');
+    reviewedCorrection = null;
+    result.className = 'import-result';
+    result.textContent = '';
+    $('#applyReviewedCorrections').disabled = true;
+    if (!code) {
+      result.classList.add('bad');
+      result.textContent = 'Paste a correction package first.';
+      return;
+    }
+    mount.classList.add('loading');
+    mount.innerHTML = '<div class="empty-state">Validating every proposed catalog value…</div>';
+    try {
+      const response = await fetch('/api/catalog/corrections/preview', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ code }),
+      });
+      const data = await response.json();
+      if (!response.ok || !data.ok) throw new Error(data.error || 'invalid-correction-package');
+      reviewedCorrection = data.correction;
+      mount.classList.remove('loading');
+      mount.innerHTML = `<div class="correction-review-head"><b>VALID PACKAGE</b><span>${data.correction.entries.length} proposed change${data.correction.entries.length === 1 ? '' : 's'} · created ${esc(data.correction.createdAt.slice(0, 10))}</span></div>${data.correction.entries.map(correctionChangesHTML).join('')}`;
+      result.classList.add('good');
+      result.textContent = 'Nothing has been written. Review every change before applying.';
+      renderCorrectionWorkspace();
+    } catch (error) {
+      mount.classList.remove('loading');
+      mount.innerHTML =
+        '<div class="empty-state">The package was rejected before any data was changed.</div>';
+      result.classList.add('bad');
+      result.textContent = humanCorrectionError(error.message);
+    }
+  }
+
+  async function applyReviewedCorrectionPackage() {
+    if (!reviewedCorrection) return;
+    const button = $('#applyReviewedCorrections');
+    const result = $('#correctionImportResult');
+    button.disabled = true;
+    button.textContent = 'VALIDATING + APPLYING…';
+    try {
+      await applyCorrectionEntries(reviewedCorrection.entries);
+    } catch (error) {
+      button.disabled = false;
+      button.textContent = 'APPLY TO THIS INSTALLATION';
+      result.className = 'import-result bad';
+      result.textContent = error.message;
+    }
+  }
+
   function hasUnsafeText(value) {
     return /[<>\u0000-\u001f\u007f]/.test(value);
   }
@@ -1831,6 +2197,7 @@ import {
     delete myOpinions[x.id];
     delete favorites[x.id];
     delete meta[x.id];
+    delete catalogDrafts[x.id];
     metaQueued.delete(x.id);
     for (let index = metaQueue.length - 1; index >= 0; index--) {
       if (metaQueue[index]?.id === x.id) metaQueue.splice(index, 1);
@@ -1847,6 +2214,7 @@ import {
     save(STORE.sources, sources);
     save(STORE.episodes, episodeProgress);
     save(STORE.series, seriesGroups);
+    save(STORE.catalogCorrections, catalogDrafts);
     populateFilters();
     $('#detailDialog').close();
     renderAll();
@@ -1895,7 +2263,7 @@ import {
       sc.overall ? `Overall ${sc.overall}` : '',
     ].filter(Boolean);
     $('#dialogBody').innerHTML =
-      `<div class="detail-hero">${bg ? `<img class="detail-bg" src="${esc(bg)}" alt="">` : ''}<div class="detail-heading"><div class="kicker">${x.rank ? `MASTER RANK #${String(x.rank).padStart(3, '0')}` : 'CUSTOM ADDITION'} // <span data-quality-rating>${esc(quality)}</span></div><h2>${esc(x.title)}</h2></div></div><div class="detail-content"><div class="detail-facts">${facts.map((f, index) => `<span class="fact" ${index === 1 ? 'data-quality-rating' : ''}>${esc(f)}</span>`).join('')}</div><div class="detail-grid"><div>${m.description ? `<h4>Synopsis</h4><p>${esc(m.description)}</p>` : '<p class="metadata-wait">Synopsis will appear when metadata is available.</p>'}${x.watch_note ? `<div class="callout"><h4>Watch note</h4><p>${esc(x.watch_note)}</p></div>` : ''}${x.caveat ? `<div class="callout"><h4>Worth knowing</h4><p>${esc(x.caveat)}</p></div>` : ''}${m.siteUrl ? `<a class="external-link" href="${esc(m.siteUrl)}" target="_blank" rel="noopener">OPEN SOURCE ↗</a>` : ''}<h4>Content</h4>${contentGuide(x, false)}${canTrackEpisodes(x) ? `<div id="episodeTrackerMount" class="episode-tracker-mount" data-episode-owner="${esc(x.id)}" data-episode-variant="detail"></div>` : ''}${x.custom ? customEditorHTML(x) : ''}${ops.length ? `<h4>Imported opinions</h4><div class="source-opinion-list">${ops.map((o) => `<div class="source-opinion"><b>${esc(o.label)}</b><span class="${o.verdict === 'recommend' ? 'yes' : 'no'}">${o.verdict === 'recommend' ? 'RECOMMENDED' : 'NOT RECOMMENDED'}</span></div>`).join('')}</div>` : ''}</div><aside><div class="user-edit"><button id="modalFavorite" class="favorite-detail ${isFavorite(id) ? 'active' : ''}" type="button">${isFavorite(id) ? '♥ FAVORITE' : '♡ ADD TO FAVORITES'}</button><label>MY RECOMMENDATION</label><div class="verdict-row"><button class="verdict-btn rec ${verdict === 'recommend' ? 'active' : ''}" data-v="recommend">RECOMMEND</button><button class="verdict-btn no ${verdict === 'avoid' ? 'active' : ''}" data-v="avoid">DON'T RECOMMEND</button><button class="verdict-btn neutral ${!verdict ? 'active' : ''}" data-v="">NEUTRAL</button></div><label>WATCH STATUS</label><select id="modalStatus">${['Not started', 'Watching', 'Completed', 'On hold', 'Dropped'].map((s) => `<option ${p.status === s ? 'selected' : ''}>${s}</option>`).join('')}</select><div class="rating-format-head"><span>MY RATING</span><div class="rating-format-toggle" role="group" aria-label="Personal rating format"><button type="button" data-rating-format="ten">10 SCALE</button><button type="button" data-rating-format="tier">LETTER SCALE</button></div></div><div id="modalRatingEditor">${ratingEditorHTML(p.rating)}</div><small class="rating-scale-help" id="ratingScaleHelp">${esc(ratingScaleHelp())}</small><label>PRIVATE NOTE</label><textarea id="modalNote" maxlength="2000">${esc(p.note || '')}</textarea><button class="slash-button hot wide" id="saveDetail">${x.custom ? 'SAVE TITLE + LOCAL DATA' : 'SAVE LOCAL DATA'}</button>${x.custom ? '<button class="danger-button wide" id="removeCustomTitle" type="button">REMOVE CUSTOM TITLE</button>' : ''}</div></aside></div></div>`;
+      `<div class="detail-hero">${bg ? `<img class="detail-bg" src="${esc(bg)}" alt="">` : ''}<div class="detail-heading"><div class="kicker">${x.rank ? `MASTER RANK #${String(x.rank).padStart(3, '0')}` : 'CUSTOM ADDITION'} // <span data-quality-rating>${esc(quality)}</span></div><h2>${esc(x.title)}</h2></div></div><div class="detail-content"><div class="detail-facts">${facts.map((f, index) => `<span class="fact" ${index === 1 ? 'data-quality-rating' : ''}>${esc(f)}</span>`).join('')}</div><div class="detail-grid"><div>${m.description ? `<h4>Synopsis</h4><p>${esc(m.description)}</p>` : '<p class="metadata-wait">Synopsis will appear when metadata is available.</p>'}${x.watch_note ? `<div class="callout"><h4>Watch note</h4><p>${esc(x.watch_note)}</p></div>` : ''}${x.caveat ? `<div class="callout"><h4>Worth knowing</h4><p>${esc(x.caveat)}</p></div>` : ''}${m.siteUrl ? `<a class="external-link" href="${esc(m.siteUrl)}" target="_blank" rel="noopener">OPEN SOURCE ↗</a>` : ''}<h4>Content</h4>${contentGuide(x, false)}${x.custom ? `${customEditorHTML(x)}${customPromotionHTML(x)}` : catalogCorrectionEditorHTML(x)}${canTrackEpisodes(x) ? `<div id="episodeTrackerMount" class="episode-tracker-mount" data-episode-owner="${esc(x.id)}" data-episode-variant="detail"></div>` : ''}${ops.length ? `<h4>Imported opinions</h4><div class="source-opinion-list">${ops.map((o) => `<div class="source-opinion"><b>${esc(o.label)}</b><span class="${o.verdict === 'recommend' ? 'yes' : 'no'}">${o.verdict === 'recommend' ? 'RECOMMENDED' : 'NOT RECOMMENDED'}</span></div>`).join('')}</div>` : ''}</div><aside><div class="user-edit"><button id="modalFavorite" class="favorite-detail ${isFavorite(id) ? 'active' : ''}" type="button">${isFavorite(id) ? '♥ FAVORITE' : '♡ ADD TO FAVORITES'}</button><label>MY RECOMMENDATION</label><div class="verdict-row"><button class="verdict-btn rec ${verdict === 'recommend' ? 'active' : ''}" data-v="recommend">RECOMMEND</button><button class="verdict-btn no ${verdict === 'avoid' ? 'active' : ''}" data-v="avoid">DON'T RECOMMEND</button><button class="verdict-btn neutral ${!verdict ? 'active' : ''}" data-v="">NEUTRAL</button></div><label>WATCH STATUS</label><select id="modalStatus">${['Not started', 'Watching', 'Completed', 'On hold', 'Dropped'].map((s) => `<option ${p.status === s ? 'selected' : ''}>${s}</option>`).join('')}</select><div class="rating-format-head"><span>MY RATING</span><div class="rating-format-toggle" role="group" aria-label="Personal rating format"><button type="button" data-rating-format="ten">10 SCALE</button><button type="button" data-rating-format="tier">LETTER SCALE</button></div></div><div id="modalRatingEditor">${ratingEditorHTML(p.rating)}</div><small class="rating-scale-help" id="ratingScaleHelp">${esc(ratingScaleHelp())}</small><label>PRIVATE NOTE</label><textarea id="modalNote" maxlength="2000">${esc(p.note || '')}</textarea><button class="slash-button hot wide" id="saveDetail">${x.custom ? 'SAVE TITLE + LOCAL DATA' : 'SAVE LOCAL DATA'}</button>${x.custom ? '<button class="danger-button wide" id="removeCustomTitle" type="button">REMOVE CUSTOM TITLE</button>' : ''}</div></aside></div></div>`;
     $('#dialogBody').dataset.itemId = id;
     $('#modalFavorite').onclick = () => {
       toggleFavorite(id);
@@ -1945,6 +2313,38 @@ import {
       }),
     );
     renderPersonalRating();
+    if (!x.custom) {
+      $('#saveCatalogDraft').onclick = () => {
+        const result = $('#catalogEditorResult');
+        result.className = 'import-result';
+        try {
+          stageOfficialCorrection(x);
+          result.classList.add('good');
+          result.textContent = 'Saved to the review package and applied to this browser view.';
+          renderAll();
+        } catch (error) {
+          result.classList.add('bad');
+          result.textContent = error.message;
+        }
+      };
+      if ($('#applyCatalogDirect'))
+        $('#applyCatalogDirect').onclick = async () => {
+          const button = $('#applyCatalogDirect');
+          const result = $('#catalogEditorResult');
+          result.className = 'import-result';
+          try {
+            const entry = stageOfficialCorrection(x);
+            button.disabled = true;
+            button.textContent = 'VALIDATING + SAVING…';
+            await applyCorrectionEntries([entry], { keepForExport: true });
+          } catch (error) {
+            button.disabled = false;
+            button.textContent = 'SAVE TO THIS INSTALLATION';
+            result.classList.add('bad');
+            result.textContent = error.message;
+          }
+        };
+    }
     if (x.custom) {
       $('#refreshCustomMetadata').onclick = async () => {
         const button = $('#refreshCustomMetadata');
@@ -1977,6 +2377,35 @@ import {
           button.textContent = 'REMOVE CUSTOM TITLE';
         }, 5000);
       };
+      $('#stageCustomPromotion').onclick = () => {
+        const result = $('#promotionResult');
+        result.className = 'import-result';
+        try {
+          stageCustomPromotion(x);
+          result.classList.add('good');
+          result.textContent = 'The completed title is ready in the review package.';
+        } catch (error) {
+          result.classList.add('bad');
+          result.textContent = error.message;
+        }
+      };
+      if ($('#applyCustomDirect'))
+        $('#applyCustomDirect').onclick = async () => {
+          const button = $('#applyCustomDirect');
+          const result = $('#promotionResult');
+          result.className = 'import-result';
+          try {
+            const entry = stageCustomPromotion(x);
+            button.disabled = true;
+            button.textContent = 'VALIDATING + ADDING…';
+            await applyCorrectionEntries([entry], { keepForExport: true });
+          } catch (error) {
+            button.disabled = false;
+            button.textContent = 'ADD TO THIS INSTALLATION';
+            result.classList.add('bad');
+            result.textContent = error.message;
+          }
+        };
     }
     $('#saveDetail').onclick = () => {
       let metadataChanged = false;
@@ -2277,6 +2706,29 @@ import {
   $('#exportBackupBtn').addEventListener('click', exportUserBackup);
   $('#backupFile').addEventListener('change', previewUserBackup);
   $('#importBackupBtn').addEventListener('click', importUserBackup);
+  $('#generateCorrectionCode').addEventListener('click', generateCorrectionPackage);
+  $('#copyCorrectionCode').addEventListener('click', async () => {
+    const code = $('#correctionExportCode').value;
+    if (!code) return toast('Generate a correction package first');
+    try {
+      await navigator.clipboard.writeText(code);
+    } catch {
+      $('#correctionExportCode').select();
+      document.execCommand('copy');
+    }
+    toast('Correction package copied');
+  });
+  $('#clearCorrectionDrafts').addEventListener('click', () => {
+    if (!Object.keys(catalogDrafts).length || !confirm('Clear every saved catalog correction draft?')) return;
+    catalogDrafts = {};
+    save(STORE.catalogCorrections, catalogDrafts);
+    $('#correctionExportCode').value = '';
+    renderCorrectionWorkspace();
+    renderAll();
+    toast('Correction drafts cleared');
+  });
+  $('#previewCorrectionCode').addEventListener('click', previewCorrectionPackage);
+  $('#applyReviewedCorrections').addEventListener('click', applyReviewedCorrectionPackage);
   $('#addTitleForm').addEventListener('submit', addTitle);
   $('#dialogClose').addEventListener('click', () => $('#detailDialog').close());
   $('#collectionClose').addEventListener('click', () => $('#collectionDialog').close());
@@ -2326,6 +2778,7 @@ import {
   renderFranchises();
   renderFavorites();
   renderUserSummary();
+  renderCorrectionWorkspace();
   updateHero();
   checkServer();
   checkForUpdates();
@@ -2333,6 +2786,11 @@ import {
   if (backupImportMessage) {
     sessionStorage.removeItem('uai:backup-import-message');
     setTimeout(() => toast(backupImportMessage), 120);
+  }
+  const catalogImportMessage = sessionStorage.getItem('uai:catalog-import-message');
+  if (catalogImportMessage) {
+    sessionStorage.removeItem('uai:catalog-import-message');
+    setTimeout(() => toast(catalogImportMessage), 120);
   }
   const hash = location.hash.replace('#', '');
   if (['master', 'collections', 'franchises', 'adult', 'favorites', 'userlist'].includes(hash))

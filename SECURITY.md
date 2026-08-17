@@ -23,3 +23,9 @@ verification; recipients must still trust the person who shared the fingerprint.
 UserList codes intentionally omit favorites, watch status, personal ratings, private
 notes and the sender's display name. Imported codes are verified and validated before
 browser data is changed.
+
+Catalog correction packages are unsigned data proposals and never contain a write token.
+The catalog mutation endpoint accepts only same-origin loopback requests from the computer
+running the server and requires an ephemeral capability token created at server startup.
+Remote clients can validate and export packages but cannot write to that installation's
+catalog through the application.

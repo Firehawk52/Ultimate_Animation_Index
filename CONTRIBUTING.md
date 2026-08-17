@@ -24,6 +24,18 @@ Do not commit the generated catalog file; CI rebuilds it from the source. Keep e
 title IDs stable when renaming a canonical title because those IDs connect saved browser
 data and imported UserLists. Add an alias when a rename is meant to preserve identity.
 
+### Correction packages
+
+The application can export rating edits and completed custom-title candidates as a `UAIC`
+review package. Packages are data-only proposals; they do not grant repository or server
+access. Validate the package in the UserList correction workspace and inspect every
+before/after value before applying it to a local checkout.
+
+Applying a package updates `data/catalog-source.json` and regenerates the ignored browser
+copy. Review the resulting Git diff before committing. A local catalog change becomes part
+of the public project only after it is accepted and pushed to `main` through the normal
+GitHub permissions and review process.
+
 ## Application changes
 
 Before opening a pull request, run:

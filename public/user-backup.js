@@ -102,6 +102,12 @@ function validateCustomTitles(value) {
     if (!Number.isInteger(year) || year < 0 || year > 2200) throw new Error('invalid-custom-year');
     const api = APIS.has(item.api) ? item.api : 'none';
     const title = text(item.title, 180, 'custom-title-name', { required: true });
+    const score = (key, maximum) => {
+      const number = Number(item.scores?.[key] || 0);
+      if (!Number.isInteger(number) || number < 0 || number > maximum)
+        throw new Error('invalid-catalog-score');
+      return number;
+    };
     const normalized = {
       id,
       title,
@@ -118,7 +124,12 @@ function validateCustomTitles(value) {
       custom: true,
       addedByMe: item.addedByMe === true,
       content: validateContent(item.content || {}),
-      scores: { overall: 0, production: 0, story: 0, emotional: 0 },
+      scores: {
+        overall: score('overall', 100),
+        production: score('production', 10),
+        story: score('story', 10),
+        emotional: score('emotional', 10),
+      },
     };
     if (item.contentEstimated === true) normalized.contentEstimated = true;
     return normalized;
@@ -231,7 +242,7 @@ export function validateUserBackup(input) {
   };
 }
 
-export function createUserBackup(data, { createdAt = new Date().toISOString(), appVersion = '2.0.12' } = {}) {
+export function createUserBackup(data, { createdAt = new Date().toISOString(), appVersion = '2.1.0' } = {}) {
   return validateUserBackup({ format: FORMAT, version: VERSION, createdAt, appVersion, data });
 }
 

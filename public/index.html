@@ -16,7 +16,7 @@
       href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:ital,wght@0,600;0,700;0,800;1,700&family=Space+Grotesk:wght@400;500;600;700&display=swap"
       rel="stylesheet"
     />
-    <link rel="stylesheet" href="styles.css?v=2.0.12" />
+    <link rel="stylesheet" href="styles.css?v=2.1.0" />
   </head>
   <body>
     <div class="noise"></div>
@@ -368,6 +368,55 @@
               <div id="backupResult" class="import-result"></div>
             </div>
           </section>
+          <section class="user-panel correction-panel">
+            <div class="correction-copy">
+              <div class="panel-no">F</div>
+              <div class="kicker">CURATED DATABASE</div>
+              <h3>CATALOG CORRECTIONS</h3>
+              <p>
+                Rating edits and completed custom-title candidates are saved to this installation or shared as
+                a review package. A package contains data only and never grants access to another computer or
+                repository.
+              </p>
+              <div id="correctionDraftSummary" class="correction-summary"></div>
+              <div id="correctionDraftList" class="correction-draft-list"></div>
+              <button id="generateCorrectionCode" class="slash-button hot wide" type="button">
+                GENERATE REVIEW PACKAGE
+              </button>
+              <textarea id="correctionExportCode" spellcheck="false" readonly placeholder="UAIC.…"></textarea>
+              <div class="correction-button-row">
+                <button id="copyCorrectionCode" class="slash-button wide" type="button">COPY PACKAGE</button>
+                <button id="clearCorrectionDrafts" class="danger-button wide" type="button">
+                  CLEAR DRAFTS
+                </button>
+              </div>
+            </div>
+            <div class="correction-review">
+              <div class="kicker">BEFORE / AFTER REVIEW</div>
+              <h3>REVIEW A PACKAGE</h3>
+              <p>
+                Paste a package to validate every field and compare it with the current catalog. Nothing is
+                written until you explicitly apply the validated package.
+              </p>
+              <label class="field-label"
+                >CORRECTION PACKAGE<textarea
+                  id="correctionImportCode"
+                  spellcheck="false"
+                  placeholder="Paste UAIC.…"
+                ></textarea>
+              </label>
+              <button id="previewCorrectionCode" class="slash-button wide" type="button">
+                VALIDATE + SHOW CHANGES
+              </button>
+              <div id="correctionReviewResult" class="correction-review-result">
+                <div class="empty-state">No correction package selected.</div>
+              </div>
+              <button id="applyReviewedCorrections" class="slash-button hot wide" type="button" disabled>
+                APPLY TO THIS INSTALLATION
+              </button>
+              <div id="correctionImportResult" class="import-result"></div>
+            </div>
+          </section>
         </div>
       </section>
     </main>
@@ -383,6 +432,6 @@
     </dialog>
 
     <div class="toast" id="toast" popover="manual"></div>
-    <script type="module" src="app.js?v=2.0.12"></script>
+    <script type="module" src="app.js?v=2.1.0"></script>
   </body>
 </html>
