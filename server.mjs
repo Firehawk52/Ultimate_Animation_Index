@@ -40,8 +40,8 @@ if (!existsSync(privPath) || !existsSync(pubPath)) {
   writeFileSync(pubPath, publicKey.export({ type: 'spki', format: 'pem' }), { mode: 0o644 });
 }
 const PRIVATE_KEY = readFileSync(privPath, 'utf8');
-const PUBLIC_KEY = readFileSync(pubPath, 'utf8');
-const publicDer = createPublicKey(PUBLIC_KEY).export({ type: 'spki', format: 'der' });
+const publicKeyPem = readFileSync(pubPath, 'utf8');
+const publicDer = createPublicKey(publicKeyPem).export({ type: 'spki', format: 'der' });
 const KEY_ID = createHash('sha256').update(publicDer).digest('hex').slice(0, 16);
 const PUBLIC_DER_CODE = b64url(publicDer);
 
@@ -256,38 +256,28 @@ function signPayload(payload) {
   const raw = Buffer.from(canonical, 'utf8');
   if (raw.length > 512 * 1024) throw new Error('payload-too-large');
   const sig = cryptoSign(null, raw, PRIVATE_KEY);
-  return `UWL2.${KEY_ID}.${PUBLIC_DER_CODE}.${b64url(raw)}.${b64url(sig)}`;
+  return `UWL.${KEY_ID}.${PUBLIC_DER_CODE}.${b64url(raw)}.${b64url(sig)}`;
 }
 function verifyCode(code) {
   if (typeof code !== 'string' || code.length > 800000) throw new Error('invalid-code');
   const parts = code.trim().split('.');
-  let format, keyId, verificationKey, raw, sig;
-  if (parts[0] === 'UWL2' && parts.length === 5) {
-    format = 'UWL2';
-    keyId = parts[1];
-    if (!/^[a-f0-9]{16}$/.test(keyId)) throw new Error('invalid-code');
-    const senderPublicDer = fromB64url(parts[2]);
-    if (senderPublicDer.length > 128) throw new Error('invalid-code');
-    if (createHash('sha256').update(senderPublicDer).digest('hex').slice(0, 16) !== keyId)
-      throw new Error('invalid-code');
-    try {
-      verificationKey = createPublicKey({ key: senderPublicDer, type: 'spki', format: 'der' });
-    } catch {
-      throw new Error('invalid-code');
-    }
-    if (verificationKey.asymmetricKeyType !== 'ed25519') throw new Error('invalid-code');
-    raw = fromB64url(parts[3]);
-    sig = fromB64url(parts[4]);
-  } else if (parts[0] === 'UWL1' && parts.length === 4) {
-    format = 'UWL1';
-    keyId = parts[1];
-    if (keyId !== KEY_ID) throw new Error('foreign-userlist-key');
-    verificationKey = PUBLIC_KEY;
-    raw = fromB64url(parts[2]);
-    sig = fromB64url(parts[3]);
-  } else {
-    throw new Error('not-userlist-code');
+  if (parts[0] !== 'UWL' || parts.length !== 5) throw new Error('not-userlist-code');
+  const format = 'UWL';
+  const keyId = parts[1];
+  if (!/^[a-f0-9]{16}$/.test(keyId)) throw new Error('invalid-code');
+  const senderPublicDer = fromB64url(parts[2]);
+  if (senderPublicDer.length > 128) throw new Error('invalid-code');
+  if (createHash('sha256').update(senderPublicDer).digest('hex').slice(0, 16) !== keyId)
+    throw new Error('invalid-code');
+  let verificationKey;
+  try {
+    verificationKey = createPublicKey({ key: senderPublicDer, type: 'spki', format: 'der' });
+  } catch {
+    throw new Error('invalid-code');
   }
+  if (verificationKey.asymmetricKeyType !== 'ed25519') throw new Error('invalid-code');
+  const raw = fromB64url(parts[3]);
+  const sig = fromB64url(parts[4]);
   if (raw.length > 512 * 1024 || sig.length > 256) throw new Error('invalid-code');
   if (!cryptoVerify(null, raw, verificationKey, sig)) throw new Error('signature-failed');
   let parsed;
@@ -1147,7 +1137,7 @@ export const server = http.createServer(async (req, res) => {
     if (u.pathname === '/api/health')
       return send(res, 200, {
         ok: true,
-        format: 'UWL2',
+        format: 'UWL',
         userListSchema: USERLIST_SCHEMA,
         keyId: KEY_ID,
         artwork: warmState,
@@ -1161,7 +1151,7 @@ export const server = http.createServer(async (req, res) => {
     if (u.pathname === '/api/userlist/sign' && req.method === 'POST') {
       const body = await readBody(req);
       const code = signPayload(body);
-      return send(res, 200, { ok: true, code, format: 'UWL2', keyId: KEY_ID });
+      return send(res, 200, { ok: true, code, format: 'UWL', keyId: KEY_ID });
     }
     if (u.pathname === '/api/userlist/verify' && req.method === 'POST') {
       const body = await readBody(req);
@@ -1230,7 +1220,6 @@ export const server = http.createServer(async (req, res) => {
       'payload-too-large',
       'invalid-code',
       'not-userlist-code',
-      'foreign-userlist-key',
       'signature-failed',
       'invalid-base64',
       'invalid-created',

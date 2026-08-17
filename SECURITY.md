@@ -15,7 +15,7 @@ Each installation creates an Ed25519 private key in `.userlist-keys/`. The priva
 key must never be committed, uploaded or shared. The `.gitignore` excludes this
 directory by default.
 
-Portable `UWL2` codes include only the corresponding public key. Importers verify that
+Portable `UWL` codes include only the corresponding public key. Importers verify that
 its fingerprint matches the code and that its signature covers the complete validated
 payload. This provides tamper detection and key continuity, not real-world identity
 verification; recipients must still trust the person who shared the fingerprint.

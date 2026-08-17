@@ -40,7 +40,7 @@ test('health endpoint reports a ready signing service', async () => {
 
   assert.equal(response.status, 200);
   assert.equal(body.ok, true);
-  assert.equal(body.format, 'UWL2');
+  assert.equal(body.format, 'UWL');
   assert.equal(body.userListSchema, 3);
   assert.match(body.keyId, /^[a-f0-9]{16}$/);
 });
@@ -231,7 +231,7 @@ test('portable UserLists verify when signed by another installation', async () =
   const keyId = createHash('sha256').update(publicDer).digest('hex').slice(0, 16);
   const raw = Buffer.from(JSON.stringify(payload));
   const signature = cryptoSign(null, raw, privateKey);
-  const code = `UWL2.${keyId}.${publicDer.toString('base64url')}.${raw.toString('base64url')}.${signature.toString('base64url')}`;
+  const code = `UWL.${keyId}.${publicDer.toString('base64url')}.${raw.toString('base64url')}.${signature.toString('base64url')}`;
 
   const response = await fetch(`${baseUrl}/api/userlist/verify`, {
     method: 'POST',
@@ -241,12 +241,12 @@ test('portable UserLists verify when signed by another installation', async () =
   const body = await response.json();
 
   assert.equal(response.status, 200);
-  assert.equal(body.format, 'UWL2');
+  assert.equal(body.format, 'UWL');
   assert.equal(body.keyId, keyId);
   assert.deepEqual(body.payload, payload);
 
   const tamperedRaw = Buffer.from(JSON.stringify({ ...payload, created: '2026-08-18T00:00:00.000Z' }));
-  const tamperedCode = `UWL2.${keyId}.${publicDer.toString('base64url')}.${tamperedRaw.toString('base64url')}.${signature.toString('base64url')}`;
+  const tamperedCode = `UWL.${keyId}.${publicDer.toString('base64url')}.${tamperedRaw.toString('base64url')}.${signature.toString('base64url')}`;
   const tamperedResponse = await fetch(`${baseUrl}/api/userlist/verify`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -258,7 +258,7 @@ test('portable UserLists verify when signed by another installation', async () =
   assert.equal(tamperedBody.error, 'signature-failed');
 });
 
-test('legacy UserLists remain valid without optional custom metadata', async () => {
+test('UserLists remain valid without optional custom metadata', async () => {
   const response = await fetch(`${baseUrl}/api/userlist/sign`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -283,7 +283,7 @@ test('legacy UserLists remain valid without optional custom metadata', async () 
   const body = await response.json();
 
   assert.equal(response.status, 200);
-  assert.ok(body.code.startsWith('UWL2.'));
+  assert.ok(body.code.startsWith('UWL.'));
 });
 
 test('UserList signing rejects out-of-range content ratings', async () => {

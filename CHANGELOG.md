@@ -2,6 +2,14 @@
 
 All notable changes to Ultimate Animation Index are documented here.
 
+## [2.0.6] - 2026-08-17
+
+### Unified UserList format
+
+- Renamed the portable signed sharing envelope to the single `UWL` format.
+- Removed the unused legacy compatibility path because no older codes were publicly issued.
+- Updated interface guidance, security documentation and validation tests to use `UWL` consistently.
+
 ## [2.0.5] - 2026-08-17
 
 ### Node-only catalog generation
@@ -25,9 +33,9 @@ All notable changes to Ultimate Animation Index are documented here.
 
 ### Portable UserList verification
 
-- Added the UWL2 envelope so signed UserLists can be verified and imported on another installation.
+- Added the portable UWL envelope so signed UserLists can be verified and imported on another installation.
 - Embedded only the sender's public Ed25519 key; private signing keys remain local and excluded from Git.
-- Kept same-installation UWL1 verification for existing codes and added a clear regeneration message for foreign legacy codes.
+- Rejected malformed, modified and schema-invalid codes before importing any data.
 - Displayed the verified sender-key fingerprint after import so recipients can compare it with the sender.
 - Added cross-installation verification coverage to the server test suite.
 

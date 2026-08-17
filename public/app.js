@@ -8,7 +8,7 @@ import {
 
 (async () => {
   'use strict';
-  const APP_VERSION = '2.0.5';
+  const APP_VERSION = '2.0.6';
   const catalogResponse = await fetch('catalog.json');
   if (!catalogResponse.ok) throw new Error(`Could not load catalog (${catalogResponse.status})`);
   const CAT = await catalogResponse.json();
@@ -52,7 +52,7 @@ import {
     ratingFormat: normalizeRatingFormat(savedUI.ratingFormat),
     server: false,
     signerCompatible: false,
-    signerFormat: 'UWL2',
+    signerFormat: 'UWL',
     keyId: '',
     serverCovers: 0,
     serverCoverTotal: 0,
@@ -817,7 +817,7 @@ import {
       const j = await r.json();
       state.server = !!j.ok;
       state.signerCompatible = Number(j.userListSchema) >= 3;
-      state.signerFormat = j.format || 'UWL2';
+      state.signerFormat = j.format || 'UWL';
       state.keyId = j.keyId || '';
       state.serverCovers = Number(j.covers?.cached) || 0;
       state.serverCoverTotal = Number(j.covers?.total) || masterItems.length;
@@ -1229,10 +1229,8 @@ import {
   }
   function humanImportError(e) {
     const m = {
-      'foreign-userlist-key':
-        'This legacy UWL1 code came from another installation. Ask the sender to regenerate it with UWL2.',
       'signature-failed': 'The code was modified or the signature is invalid.',
-      'not-userlist-code': 'This is not a supported UWL1 or UWL2 code.',
+      'not-userlist-code': 'This is not a supported UWL code.',
       'invalid-schema': 'The payload does not match the UserList schema.',
       'invalid-code': 'The code is malformed.',
     };

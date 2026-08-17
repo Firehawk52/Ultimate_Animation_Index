@@ -270,7 +270,7 @@ UserList uses one copy-and-paste text code instead of a shared file.
 A code looks like:
 
 ```text
-UWL2.<key-id>.<public-key>.<base64url-data>.<signature>
+UWL.<key-id>.<public-key>.<base64url-data>.<signature>
 ```
 
 A shared UserList can contain:
@@ -310,11 +310,11 @@ the full import.
 
 ### Tamper protection
 
-Each UserList is signed with Ed25519. The portable `UWL2` envelope contains the sender's public key so another
+Each UserList is signed with Ed25519. The portable `UWL` envelope contains the sender's public key so another
 installation can verify the signature and strict schema before changing local data. A modified, malformed or
 oversized code is rejected without a partial import.
 
-The identifier after `UWL2.` is a fingerprint of the embedded public key. Neither the fingerprint nor the public
+The identifier after `UWL.` is a fingerprint of the embedded public key. Neither the fingerprint nor the public
 key can be used to forge that sender's signature. UserList payloads are readable rather than encrypted, but any
 edit invalidates the signature. A public key proves that the code has not changed since it was signed; users must
 still decide whether they trust the person who shared that fingerprint. A successful import displays the verified
@@ -326,9 +326,7 @@ The server creates its signing keys on first run in:
 .userlist-keys/
 ```
 
-Keep this folder when updating the same installation so its public fingerprint remains stable. Existing `UWL1`
-codes still verify on their original installation. To share an older code with another installation, regenerate it
-as `UWL2` after updating the sender's server.
+Keep this folder when updating the same installation so its public fingerprint remains stable.
 
 Never share the private key file.
 

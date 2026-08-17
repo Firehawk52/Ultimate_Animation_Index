@@ -217,7 +217,7 @@ export function validateUserBackup(input) {
   };
 }
 
-export function createUserBackup(data, { createdAt = new Date().toISOString(), appVersion = '2.0.5' } = {}) {
+export function createUserBackup(data, { createdAt = new Date().toISOString(), appVersion = '2.0.6' } = {}) {
   return validateUserBackup({ format: FORMAT, version: VERSION, createdAt, appVersion, data });
 }
 
