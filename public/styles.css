@@ -2269,7 +2269,7 @@ textarea:focus-visible,
   padding: 20px 22px 14px;
   border-bottom: 1px solid #343c49;
 }
-.episode-tracker-head > div:first-child > span {
+.episode-tracker-head > div:first-child > span:first-child {
   color: #67cadd;
   font: 800 9px var(--body);
   letter-spacing: 0.16em;
@@ -2280,6 +2280,28 @@ textarea:focus-visible,
   font: 800 24px/1 var(--display);
   letter-spacing: 0.015em;
   text-transform: uppercase;
+}
+.series-live-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 8px;
+  color: #f6c867;
+  font: 800 8px var(--body);
+  letter-spacing: 0.11em;
+}
+.series-live-status i {
+  width: 7px;
+  height: 7px;
+  border: 2px solid #f6c867;
+  transform: rotate(45deg);
+  animation: series-live-pulse 1.8s ease-in-out infinite;
+}
+@keyframes series-live-pulse {
+  50% {
+    opacity: 0.45;
+    transform: rotate(45deg) scale(0.72);
+  }
 }
 .episode-total {
   text-align: right;
@@ -2643,7 +2665,8 @@ textarea:focus-visible,
 }
 @media (prefers-reduced-motion: reduce) {
   .episode-button.watching i,
-  .episode-loading i {
+  .episode-loading i,
+  .series-live-status i {
     animation: none;
   }
 }

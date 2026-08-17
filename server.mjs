@@ -483,6 +483,7 @@ export function fromAniListSeriesMedia(media) {
   const onePart = ['MOVIE', 'SPECIAL', 'OVA'].includes(media.format);
   return {
     id: String(media.id),
+    provider: 'anilist',
     title: media.title?.english || media.title?.romaji || `AniList ${media.id}`,
     altTitle: media.title?.romaji || '',
     year: media.seasonYear || media.startDate?.year || 0,
@@ -501,6 +502,16 @@ export function fromAniListSeriesMedia(media) {
   };
 }
 
+export function anilistSeriesNeedsRefresh(group) {
+  return (group?.entries || []).some((entry) =>
+    ['RELEASING', 'NOT_YET_RELEASED', 'HIATUS'].includes(entry.status),
+  );
+}
+
+export function tvMazeSeriesNeedsRefresh(group) {
+  return group?.showStatus !== 'Ended';
+}
+
 async function fetchAniListSeriesNodes(ids) {
   if (!ids.length) return [];
   const definitions = ids.map((_, index) => `$id${index}:Int!`).join(',');
@@ -515,7 +526,10 @@ async function fetchAniListSeriesNodes(ids) {
 async function getAniListSeries(title) {
   const key = `series:anilist:${normMetaTitle(title)}`;
   const cached = metadataCache[key];
-  if (cached?.data && Date.now() - cached.ts < META_TTL) return cached.data;
+  // Finished and cancelled series are immutable locally. Active AniList series
+  // deliberately bypass the cache so new episodes and sequel relations appear
+  // the next time a user opens the tracker.
+  if (cached?.data && !anilistSeriesNeedsRefresh(cached.data)) return cached.data;
 
   const rootData = await fetchAniList(
     `query($search:String!){Media(search:$search,type:ANIME){${ANILIST_SERIES_FIELDS}}}`,
@@ -553,7 +567,84 @@ async function getAniListSeries(title) {
       (a.year || 9999) - (b.year || 9999) ||
       Number(a.id) - Number(b.id),
   );
-  const result = { source: 'anilist', rootId: root.id, title, entries: localized };
+  const result = {
+    source: 'anilist',
+    rootId: root.id,
+    title,
+    entries: localized,
+    refreshOnOpen: anilistSeriesNeedsRefresh({ entries: localized }),
+  };
+  metadataCache[key] = { ts: Date.now(), data: result };
+  persistCacheSoon();
+  return result;
+}
+
+export function fromTVMazeSeries(show) {
+  if (!show?.id) return null;
+  const episodes = Array.isArray(show._embedded?.episodes) ? show._embedded.episodes : [];
+  const bySeason = new Map();
+  for (const episode of episodes) {
+    const season = Number.isInteger(episode?.season) ? episode.season : 0;
+    if (!bySeason.has(season)) bySeason.set(season, []);
+    bySeason.get(season).push(episode);
+  }
+  const mappedStatus =
+    show.status === 'Ended'
+      ? 'FINISHED'
+      : show.status === 'Running'
+        ? 'RELEASING'
+        : show.status === 'In Development'
+          ? 'NOT_YET_RELEASED'
+          : 'HIATUS';
+  const entries = [...bySeason.entries()]
+    .sort(([a], [b]) => a - b)
+    .map(([season, rows]) => {
+      const dates = rows
+        .map((episode) => episode.airdate)
+        .filter(Boolean)
+        .sort();
+      const year = dates[0] ? Number(dates[0].slice(0, 4)) : 0;
+      return {
+        id: `${show.id}:season:${season}`,
+        provider: 'tvmaze',
+        title: season ? `${show.name} Season ${season}` : `${show.name} Specials`,
+        altTitle: show.name || '',
+        year,
+        startDate: dates[0] || '',
+        format: season ? 'TV' : 'SPECIAL',
+        status: mappedStatus,
+        episodes: rows.length,
+        duration: Number(show.averageRuntime || show.runtime) || 0,
+        cover: show.image?.original || show.image?.medium || '',
+        siteUrl: show.url || show.officialSite || '',
+      };
+    });
+  return {
+    source: 'tvmaze',
+    rootId: String(show.id),
+    title: show.name || '',
+    showStatus: show.status || '',
+    refreshOnOpen: show.status !== 'Ended',
+    entries,
+  };
+}
+
+async function getTVMazeSeries(title) {
+  const key = `series:tvmaze:${normMetaTitle(title)}`;
+  const cached = metadataCache[key];
+  if (cached?.data && !tvMazeSeriesNeedsRefresh(cached.data)) return cached.data;
+
+  const response = await fetch(
+    `https://api.tvmaze.com/singlesearch/shows?q=${encodeURIComponent(title)}&embed=episodes`,
+    {
+      headers: { Accept: 'application/json', 'User-Agent': 'UltimateAnimationIndex/2.0' },
+      signal: AbortSignal.timeout(12000),
+    },
+  );
+  if (!response.ok) throw new Error(`tvmaze-${response.status}`);
+  const result = fromTVMazeSeries(await response.json());
+  if (!result?.entries.length) throw new Error('not-found');
+  for (const entry of result.entries) entry.cover = await localizeCover(entry.cover);
   metadataCache[key] = { ts: Date.now(), data: result };
   persistCacheSoon();
   return result;
@@ -1023,8 +1114,9 @@ export const server = http.createServer(async (req, res) => {
       const kind = u.searchParams.get('kind') || '';
       const title = safeText(u.searchParams.get('title') || '', 180, true);
       if (!title) return send(res, 400, { error: 'invalid-title' });
-      if (kind !== 'anilist') return send(res, 400, { error: 'unsupported-metadata-kind' });
-      const data = await getAniListSeries(title);
+      if (!['anilist', 'tvmaze'].includes(kind))
+        return send(res, 400, { error: 'unsupported-metadata-kind' });
+      const data = kind === 'anilist' ? await getAniListSeries(title) : await getTVMazeSeries(title);
       return send(res, 200, { ok: true, data });
     }
     if (u.pathname === '/api/resolve' && req.method === 'GET') {

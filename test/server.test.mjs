@@ -3,7 +3,15 @@ import { after, before, test } from 'node:test';
 
 process.env.UAI_SKIP_WARM = '1';
 
-const { estimateContentRatings, fromAniListSeriesMedia, server, startServer } = await import('../server.mjs');
+const {
+  anilistSeriesNeedsRefresh,
+  estimateContentRatings,
+  fromAniListSeriesMedia,
+  fromTVMazeSeries,
+  server,
+  startServer,
+  tvMazeSeriesNeedsRefresh,
+} = await import('../server.mjs');
 let baseUrl;
 
 before(async () => {
@@ -105,6 +113,43 @@ test('AniList series entries retain episodes and only main sequence relations', 
   assert.equal(entry.episodes, 1);
   assert.equal(entry.startDate, '2026-04-09');
   assert.deepEqual(entry.relations, [{ id: '43', type: 'SEQUEL' }]);
+});
+
+test('only active AniList series groups refresh when their tracker opens', () => {
+  assert.equal(
+    anilistSeriesNeedsRefresh({ entries: [{ status: 'FINISHED' }, { status: 'CANCELLED' }] }),
+    false,
+  );
+  assert.equal(
+    anilistSeriesNeedsRefresh({ entries: [{ status: 'FINISHED' }, { status: 'RELEASING' }] }),
+    true,
+  );
+  assert.equal(anilistSeriesNeedsRefresh({ entries: [{ status: 'NOT_YET_RELEASED' }] }), true);
+  assert.equal(anilistSeriesNeedsRefresh({ entries: [{ status: 'HIATUS' }] }), true);
+});
+
+test('TVMaze episodes are grouped into seasons with status-aware refresh behavior', () => {
+  const ended = fromTVMazeSeries({
+    id: 99,
+    name: 'Example Show',
+    status: 'Ended',
+    premiered: '2024-01-01',
+    averageRuntime: 42,
+    _embedded: {
+      episodes: [
+        { id: 1, season: 1, number: 1, airdate: '2024-01-01' },
+        { id: 2, season: 1, number: 2, airdate: '2024-01-08' },
+        { id: 3, season: 2, number: 1, airdate: '2025-02-01' },
+      ],
+    },
+  });
+
+  assert.equal(ended.entries.length, 2);
+  assert.equal(ended.entries[0].title, 'Example Show Season 1');
+  assert.equal(ended.entries[0].episodes, 2);
+  assert.equal(ended.entries[1].startDate, '2025-02-01');
+  assert.equal(tvMazeSeriesNeedsRefresh(ended), false);
+  assert.equal(tvMazeSeriesNeedsRefresh({ ...ended, showStatus: 'Running' }), true);
 });
 
 test('series endpoint rejects unsupported providers without making an external request', async () => {

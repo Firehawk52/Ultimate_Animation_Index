@@ -12,6 +12,8 @@ lists.
 
 There is no title limit. The list can keep growing as new and older work is added.
 
+See the [changelog](CHANGELOG.md) for release history and version 2.0 details.
+
 ## Highlights
 
 - **One worldwide catalog:** anime, films, OVAs, donghua and animation beyond Japan
@@ -234,7 +236,9 @@ Keep `covers/` when updating the app if you want to preserve downloaded artwork.
 
 For AniList-backed series, the server follows AniList's official `PREQUEL` and `SEQUEL`
 relations to group separately listed seasons and concluding specials under one catalog title.
-The relation model follows the [AniList Media relations documentation](https://docs.anilist.co/guide/graphql/queries/media#get-the-relations-of-a-media).
+Western and other TVMaze-backed shows use the provider's embedded episode list and are
+grouped by season. The integrations follow the [AniList Media relations documentation](https://docs.anilist.co/guide/graphql/queries/media#get-the-relations-of-a-media)
+and the [official TVMaze show and episode API](https://www.tvmaze.com/api#show-episode-list).
 
 Each episode starts as **Unwatched** and can be cycled to **Watching**, **Watched** and
 back to **Unwatched**. Season-level actions can advance to the next episode, mark a full
@@ -243,6 +247,12 @@ dialog and its franchise guide, so the two views cannot drift apart.
 
 Episode progress stays in the current browser under `uai:episode-progress:v1`. It is
 private local data and is not included in exported UserLists.
+
+Series metadata is status-aware. Fully finished or cancelled groups are fetched once and
+then kept in the local/server cache without automatic retries. Groups containing AniList
+entries marked `RELEASING`, `NOT_YET_RELEASED` or `HIATUS` are checked whenever their
+tracker is opened, allowing newly published episodes and connected seasons to appear while
+preserving the existing episode progress.
 
 ## UserList sharing
 

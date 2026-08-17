@@ -514,12 +514,12 @@
   const EPISODE_STATES = ['unwatched', 'watching', 'watched'];
 
   function canTrackEpisodes(x) {
-    if (!x || x.api !== 'anilist') return false;
+    if (!x || !['anilist', 'tvmaze'].includes(x.api)) return false;
     return /series|tv|ova|ona|special/i.test(`${x.type || ''} ${meta[x.id]?.data?.format || ''}`);
   }
 
   function episodeKey(entry) {
-    return `anilist:${entry.id}`;
+    return `${entry.provider || 'anilist'}:${entry.id}`;
   }
 
   function episodeState(entry, number) {
@@ -567,34 +567,42 @@
     return 'Not started';
   }
 
+  function seriesGroupNeedsRefresh(group) {
+    if (typeof group?.refreshOnOpen === 'boolean') return group.refreshOnOpen;
+    return (group?.entries || []).some((entry) =>
+      ['RELEASING', 'NOT_YET_RELEASED', 'HIATUS'].includes(entry.status),
+    );
+  }
+
   function cachedSeriesGroup(x) {
     const record = seriesGroups[x.id];
-    return record?.data && Date.now() - Number(record.ts || 0) < META_TTL ? record.data : null;
+    return record?.data || null;
   }
 
   async function loadSeriesGroup(x, { force = false } = {}) {
     if (!canTrackEpisodes(x)) return null;
-    if (!force) {
-      const cached = cachedSeriesGroup(x);
+    const cached = cachedSeriesGroup(x);
+    if (!force && cached && !seriesGroupNeedsRefresh(cached)) return cached;
+    if (!state.server) {
       if (cached) return cached;
+      throw new Error('Series metadata service is offline.');
     }
-    if (!state.server) throw new Error('Series metadata service is offline.');
     if (seriesLoading.has(x.id)) return seriesLoading.get(x.id);
     const task = (async () => {
       const response = await fetch(
-        `/api/series?kind=anilist&title=${encodeURIComponent(x.lookupTitle || x.title)}`,
+        `/api/series?kind=${encodeURIComponent(x.api)}&title=${encodeURIComponent(x.lookupTitle || x.title)}`,
         { cache: force ? 'reload' : 'default' },
       );
       const result = await response.json();
       if (!response.ok || !result.ok || !Array.isArray(result.data?.entries))
         throw new Error(result.error || 'Series metadata was not found.');
-      const matches = result.data.entries.some((entry) =>
-        metadataMatchesTitle(
-          x.lookupTitle || x.title,
-          { canonicalTitle: entry.title, altTitle: entry.altTitle },
-          x.year,
-        ),
-      );
+      const matches = [
+        { canonicalTitle: result.data.title, altTitle: '' },
+        ...result.data.entries.map((entry) => ({
+          canonicalTitle: entry.title,
+          altTitle: entry.altTitle,
+        })),
+      ].some((candidate) => metadataMatchesTitle(x.lookupTitle || x.title, candidate, x.year));
       if (!matches) throw new Error('The provider returned a different series.');
       seriesGroups[x.id] = { ts: Date.now(), data: result.data };
       save(STORE.series, seriesGroups);
@@ -629,7 +637,10 @@
       }),
     );
     const percentage = groupStats.total ? Math.round((groupStats.watched / groupStats.total) * 100) : 0;
-    return `<section class="episode-tracker ${variant === 'franchise' ? 'franchise-tracker' : ''}"><header class="episode-tracker-head"><div><span>UNIFIED SERIES PROGRESS</span><h4>${esc(owner.title)}</h4></div><div class="episode-total"><b>${groupStats.watched}<i>/</i>${groupStats.total}</b><span>EPISODES WATCHED</span></div></header><div class="episode-overview"><span><i style="--episode-progress:${percentage / 100}"></i></span><b>${percentage}%</b></div><div class="episode-key" aria-label="Episode status legend"><span class="unwatched">UNWATCHED</span><span class="watching">WATCHING</span><span class="watched">WATCHED</span></div><div class="season-stack">${group.entries
+    const liveStatus = seriesGroupNeedsRefresh(group)
+      ? '<span class="series-live-status"><i></i>RELEASING // CHECKED ON OPEN</span>'
+      : '';
+    return `<section class="episode-tracker ${variant === 'franchise' ? 'franchise-tracker' : ''}"><header class="episode-tracker-head"><div><span>UNIFIED SERIES PROGRESS</span><h4>${esc(owner.title)}</h4>${liveStatus}</div><div class="episode-total"><b>${groupStats.watched}<i>/</i>${groupStats.total}</b><span>EPISODES WATCHED</span></div></header><div class="episode-overview"><span><i style="--episode-progress:${percentage / 100}"></i></span><b>${percentage}%</b></div><div class="episode-key" aria-label="Episode status legend"><span class="unwatched">UNWATCHED</span><span class="watching">WATCHING</span><span class="watched">WATCHED</span></div><div class="season-stack">${group.entries
       .map((entry, index) => {
         const stats = entryEpisodeStats(entry);
         const state =
