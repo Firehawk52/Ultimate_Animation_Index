@@ -275,6 +275,34 @@
     return out;
   }
 
+  function statusMarkHTML(status = 'Not started') {
+    const marks = {
+      'Not started': {
+        slug: 'not-started',
+        icon: '<circle cx="12" cy="12" r="7.5" stroke-dasharray="2.5 3.5"></circle>',
+      },
+      Watching: {
+        slug: 'watching',
+        icon: '<path d="M9 7.5 17 12l-8 4.5z"></path>',
+      },
+      Completed: {
+        slug: 'completed',
+        icon: '<path d="m7.5 12.5 3 3 6.5-7"></path>',
+      },
+      'On hold': {
+        slug: 'on-hold',
+        icon: '<path d="M9.5 8v8M14.5 8v8"></path>',
+      },
+      Dropped: {
+        slug: 'dropped',
+        icon: '<path d="m8.5 8.5 7 7m0-7-7 7"></path>',
+      },
+    };
+    const mark = marks[status] || marks['Not started'];
+    const label = `Watch status: ${status}`;
+    return `<span class="status-mark status-${mark.slug}" role="img" aria-label="${esc(label)}" title="${esc(label)}"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">${mark.icon}</svg></span>`;
+  }
+
   function cardHTML(x, { adult = false } = {}) {
     const m = meta[x.id]?.data || {},
       p = pFor(x.id),
@@ -294,7 +322,7 @@
     const fav = isFavorite(x.id);
     const content = adult ? contentGuide(x, true) : '';
     return `<article class="title-card" data-id="${esc(x.id)}" tabindex="0">
-      <div class="cover">${cover ? `<img loading="lazy" src="${esc(cover)}" alt="${esc(x.title)} cover">` : `<div class="cover-placeholder">${esc(initials(x.title))}</div>`}<span class="rank">${rank}</span><span class="tier">${esc(x.tier || 'CUSTOM')}</span><button class="favorite-toggle ${fav ? 'active' : ''}" data-fav-id="${esc(x.id)}" type="button" aria-label="${fav ? 'Remove from favorites' : 'Add to favorites'}" title="${fav ? 'Remove from favorites' : 'Add to favorites'}">${fav ? '♥' : '♡'}</button>${verdictBadge}</div>
+      <div class="cover">${cover ? `<img loading="lazy" src="${esc(cover)}" alt="${esc(x.title)} cover">` : `<div class="cover-placeholder">${esc(initials(x.title))}</div>`}<span class="rank">${rank}</span><span class="tier">${esc(x.tier || 'CUSTOM')}</span><button class="favorite-toggle ${fav ? 'active' : ''}" data-fav-id="${esc(x.id)}" type="button" aria-label="${fav ? 'Remove from favorites' : 'Add to favorites'}" title="${fav ? 'Remove from favorites' : 'Add to favorites'}">${fav ? '♥' : '♡'}</button>${statusMarkHTML(p.status)}${verdictBadge}</div>
       <div class="card-body"><div class="card-meta">${esc(displayType(x).toUpperCase())} // ${esc(liveYear(x))} // ${esc((m.studio || x.origin || '').toUpperCase())}</div><h3>${esc(x.title)}</h3>
       <div class="tag-row">${tags.map((g) => `<span class="tag">${esc(g)}</span>`).join('')}</div>${sourceBadgesHTML(x.id)}${content}
       <div class="score-line"><div class="score-bit"><b>${sc.overall || '—'}</b><span>OVERALL</span></div><div class="score-bit"><b>${sc.production || '—'}</b><span>PROD</span></div><div class="score-bit"><b>${sc.story || '—'}</b><span>STORY</span></div><div class="score-bit"><b>${sc.emotional || '—'}</b><span>EMOTION</span></div></div></div></article>`;

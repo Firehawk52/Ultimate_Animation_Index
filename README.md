@@ -16,6 +16,8 @@ There is no title limit. The list can keep growing as new and older work is adde
 
 - **One worldwide catalog:** anime, films, OVAs, donghua and animation beyond Japan
 - **Local personal data:** progress, ratings, notes and favorites stay in your browser
+- **Cover-level progress:** distinct status icons show not started, watching, completed,
+  on hold and dropped titles without opening their details
 - **Curated navigation:** rankings, filters, collections and detailed franchise guides
 - **Clear content guidance:** separate severity levels for sexual content, nudity,
   violence, gore and disturbing material
