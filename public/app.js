@@ -8,7 +8,7 @@ import {
 
 (async () => {
   'use strict';
-  const APP_VERSION = '2.0.10';
+  const APP_VERSION = '2.0.11';
   const catalogResponse = await fetch('catalog.json');
   if (!catalogResponse.ok) throw new Error(`Could not load catalog (${catalogResponse.status})`);
   const CAT = await catalogResponse.json();
@@ -85,6 +85,7 @@ import {
   let metaPumping = false,
     metaSaveTimer = null;
   let availableUpdate = '';
+  let pendingEpisodeReset = null;
   const masterItems = CAT.items || [];
   const masterById = new Map(masterItems.map((x) => [x.id, x]));
   const aliasMap = new Map();
@@ -779,6 +780,49 @@ import {
     save(STORE.episodes, episodeProgress);
   }
 
+  function cancelEpisodeResetConfirmation({ restoreButton = true } = {}) {
+    if (!pendingEpisodeReset) return;
+    clearTimeout(pendingEpisodeReset.timer);
+    const button = pendingEpisodeReset.button;
+    pendingEpisodeReset = null;
+    if (!restoreButton || !button.isConnected) return;
+    button.disabled = false;
+    button.classList.remove('episode-reset-arming', 'episode-reset-confirm');
+    button.removeAttribute('aria-busy');
+    button.setAttribute('aria-label', 'Reset watched episodes for this season');
+    button.textContent = 'RESET';
+  }
+
+  function armEpisodeResetConfirmation(button, entry) {
+    cancelEpisodeResetConfirmation();
+    const pending = {
+      button,
+      entryKey: episodeKey(entry),
+      ready: false,
+      timer: null,
+    };
+    pendingEpisodeReset = pending;
+    button.disabled = true;
+    button.classList.add('episode-reset-arming');
+    button.setAttribute('aria-busy', 'true');
+    button.setAttribute('aria-label', 'Preparing reset confirmation');
+    button.innerHTML =
+      '<span class="episode-reset-loading" aria-hidden="true"><i></i><i></i><i></i></span><b>WAIT</b>';
+    pending.timer = setTimeout(() => {
+      if (pendingEpisodeReset !== pending || !button.isConnected) {
+        if (pendingEpisodeReset === pending) pendingEpisodeReset = null;
+        return;
+      }
+      pending.ready = true;
+      button.disabled = false;
+      button.classList.remove('episode-reset-arming');
+      button.classList.add('episode-reset-confirm');
+      button.removeAttribute('aria-busy');
+      button.setAttribute('aria-label', 'Confirm reset of watched episodes for this season');
+      button.textContent = 'CONFIRM RESET';
+    }, 2000);
+  }
+
   function mountEpisodeTracker(mount, owner, group, variant = 'detail') {
     mount.dataset.episodeOwner = owner.id;
     mount.dataset.episodeVariant = variant;
@@ -798,6 +842,15 @@ import {
           for (let number = 1; number <= Number(entry.episodes || 0); number++)
             setEpisodeState(entry, number, 'watched');
         } else if (action === 'reset') {
+          const confirmed =
+            pendingEpisodeReset?.button === button &&
+            pendingEpisodeReset.entryKey === episodeKey(entry) &&
+            pendingEpisodeReset.ready;
+          if (!confirmed) {
+            armEpisodeResetConfirmation(button, entry);
+            return;
+          }
+          cancelEpisodeResetConfirmation({ restoreButton: false });
           delete episodeProgress[episodeKey(entry)];
         } else if (action === 'continue') {
           const total = Number(entry.episodes || 0);
@@ -2201,6 +2254,17 @@ import {
   $('#collectionDialog').addEventListener('click', (e) => {
     if (e.target === $('#collectionDialog')) $('#collectionDialog').close();
   });
+  document.addEventListener(
+    'click',
+    (event) => {
+      if (!pendingEpisodeReset || !(event.target instanceof Element)) return;
+      const button = event.target.closest('button');
+      if (button !== pendingEpisodeReset.button) cancelEpisodeResetConfirmation();
+    },
+    true,
+  );
+  $('#detailDialog').addEventListener('close', () => cancelEpisodeResetConfirmation());
+  $('#collectionDialog').addEventListener('close', () => cancelEpisodeResetConfirmation());
   document.addEventListener(
     'keydown',
     (event) => {

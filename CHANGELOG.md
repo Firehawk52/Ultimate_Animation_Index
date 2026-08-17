@@ -2,6 +2,14 @@
 
 All notable changes to Ultimate Animation Index are documented here.
 
+## [2.0.11] - 2026-08-18
+
+### Safer episode reset
+
+- Added a two-second armed state before a season reset can be confirmed.
+- Cancelled pending resets when the user clicks anywhere else or closes the active dialog.
+- Added accessible loading, confirmation and reduced-motion states matching the episode tracker design.
+
 ## [2.0.10] - 2026-08-18
 
 ### Sorting and ratings

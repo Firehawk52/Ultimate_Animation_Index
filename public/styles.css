@@ -2956,6 +2956,54 @@ textarea:focus-visible,
 .episode-button:active {
   transform: translateY(1px) scale(0.98);
 }
+.season-actions button.episode-reset-arming,
+.season-actions button.episode-reset-arming:disabled {
+  min-width: 92px;
+  border-color: #546271;
+  background: #141b24;
+  color: #c9d2dc;
+  cursor: wait;
+  opacity: 1;
+}
+.episode-reset-loading {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  height: 10px;
+  margin-right: 6px;
+}
+.episode-reset-loading i {
+  width: 3px;
+  height: 9px;
+  background: #67cadd;
+  transform: skewX(-18deg) scaleY(0.45);
+  animation: episode-reset-arm 660ms cubic-bezier(0.16, 1, 0.3, 1) infinite alternate;
+}
+.episode-reset-loading i:nth-child(2) {
+  animation-delay: 110ms;
+}
+.episode-reset-loading i:nth-child(3) {
+  animation-delay: 220ms;
+}
+.season-actions button.episode-reset-confirm {
+  border-color: #d95a73;
+  background: #2a1720;
+  color: #fff2f5;
+}
+.season-actions button.episode-reset-confirm:hover {
+  border-color: #f0788f;
+  background: #381c27;
+}
+@keyframes episode-reset-arm {
+  from {
+    opacity: 0.35;
+    transform: skewX(-18deg) scaleY(0.45);
+  }
+  to {
+    opacity: 1;
+    transform: skewX(-18deg) scaleY(1);
+  }
+}
 .episode-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(48px, 1fr));
@@ -3133,6 +3181,11 @@ textarea:focus-visible,
   .series-live-status i,
   .backup-preview.loading::before {
     animation: none;
+  }
+  .episode-reset-loading i {
+    animation: none;
+    opacity: 0.8;
+    transform: skewX(-18deg) scaleY(0.8);
   }
 }
 @media (max-width: 560px) {
