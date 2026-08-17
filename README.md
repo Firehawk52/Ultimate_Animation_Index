@@ -181,6 +181,7 @@ Useful commands:
 | Command                 | Purpose                                                  |
 | ----------------------- | -------------------------------------------------------- |
 | `npm start`             | Generate a missing catalog, then start on port 8787      |
+| `npm run update`        | Safely update, synchronize packages and rebuild locally  |
 | `npm run build:catalog` | Validate the source and regenerate `public/catalog.json` |
 | `npm run format`        | Format the human-maintained web and documentation files  |
 | `npm run check`         | Check JavaScript syntax                                  |
@@ -392,10 +393,24 @@ guidelines. Please report security-sensitive problems privately as described in
 
 ## Updating an existing installation
 
-When replacing the app files:
+When the site reports a new version, select **UPDATE NOW**. The local server safely
+fast-forwards the installation from `origin/main`, synchronizes packages, regenerates
+the catalog, restarts itself in the background and refreshes the page automatically.
+
+The same update can be started without the browser:
+
+- Windows: close the running server and double-click `UPDATE.bat`
+- macOS: close the running server and double-click `UPDATE.command`
+- Linux: close the running server and run `./update.sh`
+- Any platform: close the running server and run `npm run update`
+
+Automatic updating requires a Git clone on the `main` branch. It stops before changing
+anything if tracked source files have local modifications. Contributors should commit
+or stash their work and update manually when branches have diverged.
+
+Updates preserve private runtime data:
 
 1. Keep `.userlist-keys/`.
 2. Keep `covers/` if you want to retain downloaded covers.
-3. Back up the installation.
-4. Replace the application files.
-5. Restart the server.
+3. Keep `.cache/` if you want to retain provider metadata.
+4. Browser watch data remains in the same browser storage.

@@ -2,6 +2,17 @@
 
 All notable changes to Ultimate Animation Index are documented here.
 
+## [2.0.9] - 2026-08-17
+
+### One-command updates
+
+- Added `npm run update` to safely fast-forward clean installations from `origin/main`.
+- Added one-click update launchers for Windows and macOS plus a Linux update script.
+- Refused automatic updates while the server is running, outside `main` or when local source changes could be overwritten.
+- Synchronized packages and regenerated the local catalog after a successful update.
+- Added a protected **Update now** action that installs updates in the background, restarts the server and refreshes the page.
+- Added the update command to the in-app release notification and documented the workflow.
+
 ## [2.0.8] - 2026-08-17
 
 ### Compact top navigation

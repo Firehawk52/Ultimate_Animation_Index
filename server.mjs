@@ -1,10 +1,12 @@
 import http from 'node:http';
+import { spawn } from 'node:child_process';
 import { readFile, writeFile, mkdir, stat } from 'node:fs/promises';
 import { existsSync, readFileSync, writeFileSync, mkdirSync, readdirSync } from 'node:fs';
 import { extname, join, normalize, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import {
   generateKeyPairSync,
+  randomBytes,
   createHash,
   sign as cryptoSign,
   verify as cryptoVerify,
@@ -26,6 +28,8 @@ const PACKAGE_VERSION = JSON.parse(readFileSync(join(__dirname, 'package.json'),
 const LATEST_RELEASE_API = 'https://api.github.com/repos/Firehawk52/Ultimate_Animation_Index/releases/latest';
 const RELEASE_BASE_URL = 'https://github.com/Firehawk52/Ultimate_Animation_Index/releases/tag/';
 const RELEASE_TTL = 1000 * 60 * 60;
+const UPDATE_TOKEN = randomBytes(24).toString('base64url');
+let updateRunning = false;
 
 mkdirSync(PRIVATE, { recursive: true });
 mkdirSync(CACHE_DIR, { recursive: true });
@@ -114,6 +118,28 @@ function send(res, status, body, type = 'application/json; charset=utf-8') {
       "default-src 'self'; img-src 'self' data:; style-src 'self' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com data:; connect-src 'self'; script-src 'self'; object-src 'none'; base-uri 'none'; form-action 'self'; frame-ancestors 'none'",
   });
   res.end(typeof body === 'string' ? body : JSON.stringify(body));
+}
+
+function isSameOriginRequest(req) {
+  try {
+    const origin = new URL(req.headers.origin || '');
+    return ['http:', 'https:'].includes(origin.protocol) && origin.host === req.headers.host;
+  } catch {
+    return false;
+  }
+}
+
+function restartServerAfterUpdate() {
+  const helper = spawn(process.execPath, [join(__dirname, 'scripts', 'restart-after-update.mjs')], {
+    cwd: __dirname,
+    detached: true,
+    env: process.env,
+    stdio: 'ignore',
+    windowsHide: true,
+  });
+  helper.unref();
+  server.close(() => process.exit(0));
+  setTimeout(() => server.closeAllConnections?.(), 180).unref();
 }
 
 async function readBody(req) {
@@ -1138,6 +1164,8 @@ export const server = http.createServer(async (req, res) => {
       return send(res, 200, {
         ok: true,
         format: 'UWL',
+        version: PACKAGE_VERSION,
+        updateToken: UPDATE_TOKEN,
         userListSchema: USERLIST_SCHEMA,
         keyId: KEY_ID,
         artwork: warmState,
@@ -1148,6 +1176,26 @@ export const server = http.createServer(async (req, res) => {
           processed: warmState.done,
         },
       });
+    if (u.pathname === '/api/update' && req.method === 'POST') {
+      if (!isSameOriginRequest(req) || req.headers['x-uai-update-token'] !== UPDATE_TOKEN)
+        return send(res, 403, { ok: false, error: 'update-forbidden' });
+      if (updateRunning) return send(res, 409, { ok: false, error: 'update-running' });
+      updateRunning = true;
+      try {
+        const { updateInstallation } = await import('./scripts/update.mjs');
+        await updateInstallation({ checkRunningServer: false });
+        send(res, 200, { ok: true, restart: true });
+        setTimeout(restartServerAfterUpdate, 240).unref();
+        return;
+      } catch (error) {
+        updateRunning = false;
+        return send(res, 400, {
+          ok: false,
+          error: 'update-failed',
+          message: error?.message || 'The update could not be installed.',
+        });
+      }
+    }
     if (u.pathname === '/api/userlist/sign' && req.method === 'POST') {
       const body = await readBody(req);
       const code = signPayload(body);

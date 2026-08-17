@@ -222,7 +222,7 @@ export function validateUserBackup(input) {
   };
 }
 
-export function createUserBackup(data, { createdAt = new Date().toISOString(), appVersion = '2.0.8' } = {}) {
+export function createUserBackup(data, { createdAt = new Date().toISOString(), appVersion = '2.0.9' } = {}) {
   return validateUserBackup({ format: FORMAT, version: VERSION, createdAt, appVersion, data });
 }
 

@@ -8,7 +8,7 @@ import {
 
 (async () => {
   'use strict';
-  const APP_VERSION = '2.0.8';
+  const APP_VERSION = '2.0.9';
   const catalogResponse = await fetch('catalog.json');
   if (!catalogResponse.ok) throw new Error(`Could not load catalog (${catalogResponse.status})`);
   const CAT = await catalogResponse.json();
@@ -56,6 +56,7 @@ import {
     signerCompatible: false,
     signerFormat: 'UWL',
     keyId: '',
+    updateToken: '',
     serverCovers: 0,
     serverCoverTotal: 0,
     serverCoverRunning: false,
@@ -846,6 +847,7 @@ import {
       state.signerCompatible = Number(j.userListSchema) >= 3;
       state.signerFormat = j.format || 'UWL';
       state.keyId = j.keyId || '';
+      state.updateToken = j.updateToken || '';
       state.serverCovers = Number(j.covers?.cached) || 0;
       state.serverCoverTotal = Number(j.covers?.total) || masterItems.length;
       state.serverCoverRunning = !!j.covers?.running;
@@ -889,6 +891,53 @@ import {
       requestAnimationFrame(() => notice.classList.add('show'));
     } catch {
       // Update checks are advisory and must never interrupt the local catalog.
+    }
+  }
+  async function installAvailableUpdate() {
+    const button = $('#installUpdateBtn');
+    const status = $('#updateStatus');
+    if (!state.updateToken) await checkServer();
+    if (!availableUpdate || !state.updateToken) {
+      status.textContent = 'Updater unavailable. Restart the local server and try again.';
+      return;
+    }
+    button.disabled = true;
+    button.textContent = 'UPDATING…';
+    status.textContent = 'Downloading and validating the latest source…';
+    try {
+      const response = await fetch('/api/update', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-UAI-Update-Token': state.updateToken,
+        },
+        body: '{}',
+      });
+      const result = await response.json();
+      if (!response.ok || !result.ok) throw new Error(result.message || result.error || 'Update failed');
+      button.textContent = 'RESTARTING…';
+      status.textContent = 'Update installed. Restarting the server…';
+      const deadline = Date.now() + 90_000;
+      while (Date.now() < deadline) {
+        await new Promise((resolve) => setTimeout(resolve, 600));
+        try {
+          const healthResponse = await fetch('/api/health', { cache: 'no-store' });
+          if (!healthResponse.ok) continue;
+          const health = await healthResponse.json();
+          if (health.version === availableUpdate) {
+            status.textContent = 'Updated. Refreshing…';
+            location.reload();
+            return;
+          }
+        } catch {}
+      }
+      throw new Error(
+        'The update was installed, but the server did not restart automatically. Start it manually.',
+      );
+    } catch (error) {
+      button.disabled = false;
+      button.textContent = 'TRY AGAIN';
+      status.textContent = error.message;
     }
   }
   function renderUserSummary() {
@@ -2114,6 +2163,7 @@ import {
       notice.hidden = true;
     }, 280);
   });
+  $('#installUpdateBtn').addEventListener('click', installAvailableUpdate);
 
   // boot
   populateFilters();

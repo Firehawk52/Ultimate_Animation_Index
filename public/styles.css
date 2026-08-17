@@ -146,7 +146,7 @@ body:after {
   top: 84px;
   right: 24px;
   z-index: 58;
-  width: min(520px, calc(100vw - 48px));
+  width: min(640px, calc(100vw - 48px));
   display: grid;
   grid-template-columns: 48px minmax(0, 1fr) auto 34px;
   align-items: center;
@@ -198,6 +198,11 @@ body:after {
   font: 700 8px var(--body);
   letter-spacing: 0.13em;
 }
+.update-notice-copy small {
+  max-width: 36ch;
+  letter-spacing: 0.05em;
+  line-height: 1.35;
+}
 .update-notice-copy strong {
   margin: 2px 0;
   font: 800 20px var(--display);
@@ -206,7 +211,13 @@ body:after {
 .update-notice-copy strong b {
   color: var(--cyan);
 }
-.update-notice > a {
+.update-notice-actions {
+  display: grid;
+  grid-template-columns: auto auto;
+  gap: 7px;
+}
+.update-notice-actions > a,
+.update-notice-actions > button {
   padding: 10px 12px;
   border: 1px solid #4e6170;
   color: #edf4f7;
@@ -219,15 +230,29 @@ body:after {
     border-color 0.18s cubic-bezier(0.16, 1, 0.3, 1),
     color 0.18s cubic-bezier(0.16, 1, 0.3, 1);
 }
-.update-notice > a:hover {
+.update-notice-actions > button {
+  background: var(--cyan);
+  border-color: var(--cyan);
+  color: #091014;
+}
+.update-notice-actions > a:hover {
   border-color: var(--cyan);
   color: var(--cyan);
 }
-.update-notice > a:active,
-.update-notice > button:active {
+.update-notice-actions > button:hover {
+  background: #b3faff;
+  border-color: #b3faff;
+}
+.update-notice-actions > button:disabled {
+  cursor: progress;
+  opacity: 0.65;
+}
+.update-notice-actions > a:active,
+.update-notice-actions > button:active,
+#dismissUpdateBtn:active {
   transform: scale(0.98);
 }
-.update-notice > button {
+#dismissUpdateBtn {
   width: 34px;
   height: 34px;
   border: 0;
@@ -238,12 +263,12 @@ body:after {
     transform 0.18s cubic-bezier(0.16, 1, 0.3, 1),
     color 0.18s cubic-bezier(0.16, 1, 0.3, 1);
 }
-.update-notice > button:hover {
+#dismissUpdateBtn:hover {
   color: var(--ink);
 }
 .rail {
   position: fixed;
-  top: 78px;
+  top: 68px;
   bottom: 0;
   left: 0;
   width: 86px;
@@ -3044,11 +3069,16 @@ textarea:focus-visible,
     width: 42px;
     height: 42px;
   }
-  .update-notice > a {
-    grid-column: 2 / 4;
+  .update-notice-actions {
+    grid-column: 1 / 4;
+    grid-row: 2;
+    grid-template-columns: 1fr 1fr;
+  }
+  .update-notice-actions > a,
+  .update-notice-actions > button {
     text-align: center;
   }
-  .update-notice > button {
+  #dismissUpdateBtn {
     grid-column: 3;
     grid-row: 1;
   }

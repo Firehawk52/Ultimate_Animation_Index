@@ -41,8 +41,22 @@ test('health endpoint reports a ready signing service', async () => {
   assert.equal(response.status, 200);
   assert.equal(body.ok, true);
   assert.equal(body.format, 'UWL');
+  assert.match(body.version, /^\d+\.\d+\.\d+$/);
+  assert.match(body.updateToken, /^[A-Za-z0-9_-]{32}$/);
   assert.equal(body.userListSchema, 3);
   assert.match(body.keyId, /^[a-f0-9]{16}$/);
+});
+
+test('update endpoint rejects requests without its same-origin token', async () => {
+  const response = await fetch(`${baseUrl}/api/update`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: '{}',
+  });
+  const body = await response.json();
+
+  assert.equal(response.status, 403);
+  assert.equal(body.error, 'update-forbidden');
 });
 
 test('release versions are compared by semantic version components', () => {
