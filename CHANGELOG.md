@@ -2,6 +2,16 @@
 
 All notable changes to Ultimate Animation Index are documented here.
 
+## [2.0.3] - 2026-08-17
+
+### Portable UserList verification
+
+- Added the UWL2 envelope so signed UserLists can be verified and imported on another installation.
+- Embedded only the sender's public Ed25519 key; private signing keys remain local and excluded from Git.
+- Kept same-installation UWL1 verification for existing codes and added a clear regeneration message for foreign legacy codes.
+- Displayed the verified sender-key fingerprint after import so recipients can compare it with the sender.
+- Added cross-installation verification coverage to the server test suite.
+
 ## [2.0.2] - 2026-08-17
 
 ### Selectable rating formats

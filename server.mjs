@@ -18,7 +18,7 @@ const PRIVATE = join(__dirname, '.userlist-keys');
 const CACHE_DIR = join(__dirname, '.cache');
 const COVER_DIR = join(__dirname, 'covers');
 const PORT = Number(process.env.PORT || 8787);
-const USERLIST_SCHEMA = 2;
+const USERLIST_SCHEMA = 3;
 const MAX_BODY = 1024 * 1024;
 const META_TTL = 1000 * 60 * 60 * 24 * 30;
 const MAX_COVER_BYTES = 10 * 1024 * 1024;
@@ -39,6 +39,7 @@ const PRIVATE_KEY = readFileSync(privPath, 'utf8');
 const PUBLIC_KEY = readFileSync(pubPath, 'utf8');
 const publicDer = createPublicKey(PUBLIC_KEY).export({ type: 'spki', format: 'der' });
 const KEY_ID = createHash('sha256').update(publicDer).digest('hex').slice(0, 16);
+const PUBLIC_DER_CODE = b64url(publicDer);
 
 // Persistent metadata cache
 const cachePath = join(CACHE_DIR, 'metadata.json');
@@ -211,24 +212,47 @@ function signPayload(payload) {
   const raw = Buffer.from(canonical, 'utf8');
   if (raw.length > 512 * 1024) throw new Error('payload-too-large');
   const sig = cryptoSign(null, raw, PRIVATE_KEY);
-  return `UWL1.${KEY_ID}.${b64url(raw)}.${b64url(sig)}`;
+  return `UWL2.${KEY_ID}.${PUBLIC_DER_CODE}.${b64url(raw)}.${b64url(sig)}`;
 }
 function verifyCode(code) {
   if (typeof code !== 'string' || code.length > 800000) throw new Error('invalid-code');
   const parts = code.trim().split('.');
-  if (parts.length !== 4 || parts[0] !== 'UWL1') throw new Error('not-userlist-code');
-  if (parts[1] !== KEY_ID) throw new Error('foreign-userlist-key');
-  const raw = fromB64url(parts[2]);
-  const sig = fromB64url(parts[3]);
+  let format, keyId, verificationKey, raw, sig;
+  if (parts[0] === 'UWL2' && parts.length === 5) {
+    format = 'UWL2';
+    keyId = parts[1];
+    if (!/^[a-f0-9]{16}$/.test(keyId)) throw new Error('invalid-code');
+    const senderPublicDer = fromB64url(parts[2]);
+    if (senderPublicDer.length > 128) throw new Error('invalid-code');
+    if (createHash('sha256').update(senderPublicDer).digest('hex').slice(0, 16) !== keyId)
+      throw new Error('invalid-code');
+    try {
+      verificationKey = createPublicKey({ key: senderPublicDer, type: 'spki', format: 'der' });
+    } catch {
+      throw new Error('invalid-code');
+    }
+    if (verificationKey.asymmetricKeyType !== 'ed25519') throw new Error('invalid-code');
+    raw = fromB64url(parts[3]);
+    sig = fromB64url(parts[4]);
+  } else if (parts[0] === 'UWL1' && parts.length === 4) {
+    format = 'UWL1';
+    keyId = parts[1];
+    if (keyId !== KEY_ID) throw new Error('foreign-userlist-key');
+    verificationKey = PUBLIC_KEY;
+    raw = fromB64url(parts[2]);
+    sig = fromB64url(parts[3]);
+  } else {
+    throw new Error('not-userlist-code');
+  }
   if (raw.length > 512 * 1024 || sig.length > 256) throw new Error('invalid-code');
-  if (!cryptoVerify(null, raw, PUBLIC_KEY, sig)) throw new Error('signature-failed');
+  if (!cryptoVerify(null, raw, verificationKey, sig)) throw new Error('signature-failed');
   let parsed;
   try {
     parsed = JSON.parse(raw.toString('utf8'));
   } catch {
     throw new Error('invalid-json');
   }
-  return validatePayload(parsed);
+  return { payload: validatePayload(parsed), format, keyId };
 }
 
 function htmlToText(s = '') {
@@ -1059,7 +1083,7 @@ export const server = http.createServer(async (req, res) => {
     if (u.pathname === '/api/health')
       return send(res, 200, {
         ok: true,
-        format: 'UWL1',
+        format: 'UWL2',
         userListSchema: USERLIST_SCHEMA,
         keyId: KEY_ID,
         artwork: warmState,
@@ -1073,12 +1097,12 @@ export const server = http.createServer(async (req, res) => {
     if (u.pathname === '/api/userlist/sign' && req.method === 'POST') {
       const body = await readBody(req);
       const code = signPayload(body);
-      return send(res, 200, { ok: true, code, format: 'UWL1', keyId: KEY_ID });
+      return send(res, 200, { ok: true, code, format: 'UWL2', keyId: KEY_ID });
     }
     if (u.pathname === '/api/userlist/verify' && req.method === 'POST') {
       const body = await readBody(req);
-      const payload = verifyCode(body.code);
-      return send(res, 200, { ok: true, payload, format: 'UWL1', keyId: KEY_ID });
+      const verified = verifyCode(body.code);
+      return send(res, 200, { ok: true, ...verified });
     }
     if (u.pathname === '/api/meta/batch' && req.method === 'POST') {
       const body = await readBody(req);
