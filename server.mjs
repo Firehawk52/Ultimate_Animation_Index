@@ -22,6 +22,10 @@ const USERLIST_SCHEMA = 3;
 const MAX_BODY = 1024 * 1024;
 const META_TTL = 1000 * 60 * 60 * 24 * 30;
 const MAX_COVER_BYTES = 10 * 1024 * 1024;
+const PACKAGE_VERSION = JSON.parse(readFileSync(join(__dirname, 'package.json'), 'utf8')).version;
+const LATEST_RELEASE_API = 'https://api.github.com/repos/Firehawk52/Ultimate_Animation_Index/releases/latest';
+const RELEASE_BASE_URL = 'https://github.com/Firehawk52/Ultimate_Animation_Index/releases/tag/';
+const RELEASE_TTL = 1000 * 60 * 60;
 
 mkdirSync(PRIVATE, { recursive: true });
 mkdirSync(CACHE_DIR, { recursive: true });
@@ -55,6 +59,46 @@ function persistCacheSoon() {
       writeFileSync(cachePath, JSON.stringify(metadataCache));
     } catch {}
   }, 500);
+}
+
+// Cached GitHub release check. A network failure never prevents the local app from loading.
+let releaseCache = { checkedAt: 0, data: null };
+function versionParts(value) {
+  const match = String(value || '').match(/^v?(\d+)\.(\d+)\.(\d+)$/);
+  return match ? match.slice(1).map(Number) : null;
+}
+export function isNewerVersion(latest, current) {
+  const next = versionParts(latest);
+  const installed = versionParts(current);
+  if (!next || !installed) return false;
+  for (let index = 0; index < 3; index++) {
+    if (next[index] !== installed[index]) return next[index] > installed[index];
+  }
+  return false;
+}
+async function getLatestRelease() {
+  if (releaseCache.data && Date.now() - releaseCache.checkedAt < RELEASE_TTL) return releaseCache.data;
+  const response = await fetch(LATEST_RELEASE_API, {
+    headers: {
+      Accept: 'application/vnd.github+json',
+      'User-Agent': 'Ultimate-Animation-Index',
+    },
+    signal: AbortSignal.timeout(6000),
+  });
+  if (!response.ok) throw new Error('release-check-failed');
+  const release = await response.json();
+  const parts = versionParts(release.tag_name);
+  if (!parts) throw new Error('release-check-failed');
+  const latest = parts.join('.');
+  releaseCache = {
+    checkedAt: Date.now(),
+    data: {
+      latest,
+      releaseUrl: `${RELEASE_BASE_URL}${encodeURIComponent(`v${latest}`)}`,
+      publishedAt: typeof release.published_at === 'string' ? release.published_at : '',
+    },
+  };
+  return releaseCache.data;
 }
 
 // Shared HTTP helpers and security headers
@@ -1080,6 +1124,26 @@ async function serveStatic(req, res, pathName) {
 export const server = http.createServer(async (req, res) => {
   try {
     const u = new URL(req.url, `http://${req.headers.host || 'localhost'}`);
+    if (u.pathname === '/api/version' && req.method === 'GET') {
+      try {
+        const latestRelease = await getLatestRelease();
+        return send(res, 200, {
+          ok: true,
+          current: PACKAGE_VERSION,
+          ...latestRelease,
+          updateAvailable: isNewerVersion(latestRelease.latest, PACKAGE_VERSION),
+        });
+      } catch {
+        return send(res, 200, {
+          ok: true,
+          current: PACKAGE_VERSION,
+          latest: null,
+          releaseUrl: null,
+          updateAvailable: false,
+          unavailable: true,
+        });
+      }
+    }
     if (u.pathname === '/api/health')
       return send(res, 200, {
         ok: true,
