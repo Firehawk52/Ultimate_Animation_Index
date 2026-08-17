@@ -2,6 +2,15 @@
 
 All notable changes to Ultimate Animation Index are documented here.
 
+## [2.0.1] - 2026-08-17
+
+### Private backup and restore
+
+- Added local JSON backups for watch statuses, ratings, private notes, favorites and episode progress.
+- Included personal opinions, custom titles, imported sources and saved interface preferences.
+- Added validated merge and replace import modes with rollback if a browser storage write fails.
+- Kept backup creation and parsing entirely in the browser without sending private data to the server.
+
 ## [2.0.0] - 2026-08-17
 
 ### Episode and series tracking

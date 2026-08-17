@@ -280,6 +280,25 @@ It does not contain:
 
 The person importing the code chooses the source name locally.
 
+### Private backup and restore
+
+The UserList page can also download a private JSON backup. Unlike a signed sharing code,
+this file is intended only for the owner and includes:
+
+- Watch statuses, ratings and private notes
+- Favorites and per-episode progress
+- Personal recommendation marks
+- Custom titles with editable metadata and content ratings
+- Imported UserList sources
+- Saved searches, filters, sorting and interface preferences
+
+Backup files are created entirely in the browser and are never uploaded to the server.
+They are readable JSON rather than encrypted archives and should be kept private.
+On import, every record is validated before any local storage is changed. **Merge** keeps
+existing local data and lets backup values resolve conflicts, while **Replace** restores
+only the selected backup. Storage writes are rolled back if the browser cannot complete
+the full import.
+
 ### Tamper protection
 
 Each UserList is signed with Ed25519. The importer checks the signature and a strict schema before changing local data. A modified, malformed, oversized or foreign code is rejected without a partial import.

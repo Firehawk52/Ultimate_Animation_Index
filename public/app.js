@@ -1,5 +1,8 @@
+import { combineUserData, createUserBackup, summarizeUserData, validateUserBackup } from './user-backup.js';
+
 (async () => {
   'use strict';
+  const APP_VERSION = '2.0.1';
   const catalogResponse = await fetch('catalog.json');
   if (!catalogResponse.ok) throw new Error(`Could not load catalog (${catalogResponse.status})`);
   const CAT = await catalogResponse.json();
@@ -827,8 +830,178 @@
       adds = customTitles.filter((x) => x.addedByMe).length;
     $('#userListSummary').innerHTML =
       `<div><b>${rec}</b><span>RECOMMENDED</span></div><div><b>${no}</b><span>NOT RECOMMENDED</span></div><div><b>${adds}</b><span>ADDED TITLES</span></div>`;
+    renderBackupSummary();
     renderSources();
   }
+
+  function currentUserData() {
+    return {
+      progress,
+      opinions: myOpinions,
+      customTitles,
+      sources,
+      favorites,
+      episodeProgress,
+      ui: load(STORE.ui, {}),
+      compact: state.compact,
+    };
+  }
+
+  function backupSummaryHTML(summary) {
+    return [
+      [summary.statuses, 'STATUSES'],
+      [summary.episodes, 'EPISODES'],
+      [summary.favorites, 'FAVORITES'],
+      [summary.notes, 'PRIVATE NOTES'],
+      [summary.customTitles, 'CUSTOM TITLES'],
+    ]
+      .map(([value, label]) => `<span><b>${value}</b><small>${label}</small></span>`)
+      .join('');
+  }
+
+  function renderBackupSummary() {
+    const mount = $('#backupSummary');
+    if (!mount) return;
+    try {
+      mount.innerHTML = backupSummaryHTML(summarizeUserData(currentUserData()));
+    } catch {
+      mount.innerHTML = '<span><b>!</b><small>LOCAL DATA NEEDS REVIEW</small></span>';
+    }
+  }
+
+  function exportUserBackup() {
+    const button = $('#exportBackupBtn');
+    button.disabled = true;
+    button.textContent = 'BUILDING BACKUP…';
+    try {
+      const backup = createUserBackup(currentUserData(), { appVersion: APP_VERSION });
+      const blob = new Blob([JSON.stringify(backup, null, 2) + '\n'], { type: 'application/json' });
+      if (blob.size > 5 * 1024 * 1024) throw new Error('backup-too-large');
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `ultimate-animation-index-backup-${backup.createdAt.slice(0, 10)}.json`;
+      document.body.append(link);
+      link.click();
+      link.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 1000);
+      toast('Private backup downloaded');
+    } catch (error) {
+      toast(`Backup failed: ${humanBackupError(error)}`);
+    } finally {
+      button.disabled = false;
+      button.textContent = 'DOWNLOAD PRIVATE BACKUP';
+    }
+  }
+
+  let selectedBackup = null;
+
+  async function previewUserBackup() {
+    const file = $('#backupFile').files?.[0];
+    const preview = $('#backupPreview');
+    const result = $('#backupResult');
+    selectedBackup = null;
+    $('#importBackupBtn').disabled = true;
+    result.className = 'import-result';
+    result.textContent = '';
+    if (!file) {
+      preview.className = 'backup-preview';
+      preview.innerHTML =
+        '<b>NO BACKUP SELECTED</b><span>Choose a UAI JSON backup to validate it before importing.</span>';
+      return;
+    }
+    preview.className = 'backup-preview loading';
+    preview.innerHTML =
+      '<b>VALIDATING BACKUP</b><span>Checking format, limits and every local data record…</span>';
+    try {
+      if (file.size > 5 * 1024 * 1024) throw new Error('backup-too-large');
+      const raw = await file.text();
+      const backup = validateUserBackup(JSON.parse(raw));
+      const summary = summarizeUserData(backup.data);
+      selectedBackup = backup;
+      preview.className = 'backup-preview good';
+      preview.innerHTML = `<b>VALID BACKUP // ${esc(backup.createdAt.slice(0, 10))}</b><span>${summary.statuses} statuses · ${summary.episodes} episode marks · ${summary.favorites} favorites · ${summary.notes} private notes · ${summary.customTitles} custom titles</span>`;
+      $('#importBackupBtn').disabled = false;
+    } catch (error) {
+      preview.className = 'backup-preview bad';
+      preview.innerHTML = `<b>BACKUP REJECTED</b><span>${esc(humanBackupError(error))}</span>`;
+    }
+  }
+
+  function storeUserDataAtomically(data) {
+    const updates = [
+      [STORE.progress, data.progress],
+      [STORE.opinions, data.opinions],
+      [STORE.custom, data.customTitles],
+      [STORE.sources, data.sources],
+      [STORE.favorites, data.favorites],
+      [STORE.episodes, data.episodeProgress],
+      [STORE.ui, data.ui],
+      [STORE.compact, data.compact],
+    ];
+    const previous = new Map(updates.map(([key]) => [key, localStorage.getItem(key)]));
+    try {
+      updates.forEach(([key, value]) => localStorage.setItem(key, JSON.stringify(value)));
+    } catch (error) {
+      updates.forEach(([key]) => localStorage.removeItem(key));
+      for (const [key, value] of previous) {
+        if (value !== null) localStorage.setItem(key, value);
+      }
+      throw error;
+    }
+  }
+
+  function importUserBackup() {
+    const result = $('#backupResult');
+    result.className = 'import-result';
+    result.textContent = '';
+    if (!selectedBackup) {
+      result.classList.add('bad');
+      result.textContent = 'Choose and validate a backup first.';
+      return;
+    }
+    const mode = $('#backupImportMode').value;
+    if (
+      mode === 'replace' &&
+      !confirm(
+        'Replace all current local user data with this backup? This cannot be undone without another backup.',
+      )
+    )
+      return;
+    try {
+      const next = combineUserData(currentUserData(), selectedBackup.data, mode);
+      storeUserDataAtomically(next);
+      sessionStorage.setItem(
+        'uai:backup-import-message',
+        mode === 'replace' ? 'Private backup restored' : 'Private backup merged',
+      );
+      location.reload();
+    } catch (error) {
+      result.classList.add('bad');
+      result.textContent = `Nothing was imported. ${humanBackupError(error)}`;
+    }
+  }
+
+  function humanBackupError(error) {
+    const code = typeof error === 'string' ? error : error?.message || '';
+    const messages = {
+      'unsupported-backup': 'This is not a supported Ultimate Animation Index backup.',
+      'backup-too-large': 'The backup is larger than the 5 MB safety limit.',
+      'invalid-watch-status': 'The backup contains an invalid watch status.',
+      'invalid-rating': 'The backup contains an invalid personal rating.',
+      'invalid-private-note': 'The backup contains an invalid private note.',
+      'invalid-episode-state': 'The backup contains an invalid episode state.',
+      'too-many-episode-states': 'The backup contains too many episode states.',
+      'invalid-custom-titles': 'The backup contains invalid custom titles.',
+      'invalid-import-mode': 'Choose a valid import mode.',
+    };
+    if (error instanceof SyntaxError || /JSON|Unexpected token|Unexpected end/i.test(code))
+      return 'The file is not valid JSON.';
+    if (code.startsWith('invalid-') || code.startsWith('too-many-'))
+      return messages[code] || 'The backup contains invalid or unsafe data.';
+    return messages[code] || 'The browser could not store the backup data.';
+  }
+
   function renderSources() {
     const arr = Object.entries(sources).sort((a, b) =>
       (b[1].importedAt || '').localeCompare(a[1].importedAt || ''),
@@ -1776,6 +1949,9 @@
     }
   });
   $('#importCodeBtn').addEventListener('click', importUserList);
+  $('#exportBackupBtn').addEventListener('click', exportUserBackup);
+  $('#backupFile').addEventListener('change', previewUserBackup);
+  $('#importBackupBtn').addEventListener('click', importUserBackup);
   $('#addTitleForm').addEventListener('submit', addTitle);
   $('#dialogClose').addEventListener('click', () => $('#detailDialog').close());
   $('#collectionClose').addEventListener('click', () => $('#collectionDialog').close());
@@ -1797,6 +1973,11 @@
   renderUserSummary();
   updateHero();
   checkServer();
+  const backupImportMessage = sessionStorage.getItem('uai:backup-import-message');
+  if (backupImportMessage) {
+    sessionStorage.removeItem('uai:backup-import-message');
+    setTimeout(() => toast(backupImportMessage), 120);
+  }
   const hash = location.hash.replace('#', '');
   if (['master', 'collections', 'franchises', 'adult', 'favorites', 'userlist'].includes(hash))
     switchTab(hash);

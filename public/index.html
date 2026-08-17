@@ -16,7 +16,7 @@
       href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:ital,wght@0,600;0,700;0,800;1,700&family=Space+Grotesk:wght@400;500;600;700&display=swap"
       rel="stylesheet"
     />
-    <link rel="stylesheet" href="styles.css?v=2.0.0" />
+    <link rel="stylesheet" href="styles.css?v=2.0.1" />
   </head>
   <body>
     <div class="noise"></div>
@@ -297,6 +297,41 @@
             </p>
             <div id="sourceList" class="source-list"></div>
           </section>
+          <section class="user-panel backup-panel">
+            <div class="panel-no">E</div>
+            <div class="backup-copy">
+              <div class="kicker">PRIVATE LOCAL ARCHIVE</div>
+              <h3>BACKUP + RESTORE</h3>
+              <p>
+                Download your watch statuses, ratings, private notes, favorites, episode progress, custom
+                titles, imported sources and saved interface preferences. The JSON file stays on your device
+                and is never sent to the signing server. It is readable and not encrypted, so keep it private.
+              </p>
+              <div class="backup-summary" id="backupSummary"></div>
+              <button id="exportBackupBtn" class="slash-button hot wide" type="button">
+                DOWNLOAD PRIVATE BACKUP
+              </button>
+            </div>
+            <div class="backup-restore">
+              <label class="field-label backup-file-label"
+                >BACKUP FILE<input id="backupFile" type="file" accept="application/json,.json"
+              /></label>
+              <div id="backupPreview" class="backup-preview">
+                <b>NO BACKUP SELECTED</b>
+                <span>Choose a UAI JSON backup to validate it before importing.</span>
+              </div>
+              <label class="field-label"
+                >IMPORT MODE<select id="backupImportMode">
+                  <option value="merge">Merge with current local data</option>
+                  <option value="replace">Replace all local user data</option>
+                </select></label
+              >
+              <button id="importBackupBtn" class="slash-button wide" type="button" disabled>
+                IMPORT VALIDATED BACKUP
+              </button>
+              <div id="backupResult" class="import-result"></div>
+            </div>
+          </section>
         </div>
       </section>
     </main>
@@ -312,6 +347,6 @@
     </dialog>
 
     <div class="toast" id="toast" popover="manual"></div>
-    <script src="app.js?v=2.0.0"></script>
+    <script type="module" src="app.js?v=2.0.1"></script>
   </body>
 </html>
