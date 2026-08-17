@@ -2,6 +2,15 @@
 
 All notable changes to Ultimate Animation Index are documented here.
 
+## [2.0.7] - 2026-08-17
+
+### Content-guide color mapping
+
+- Matched every content-guide legend marker to its corresponding severity-bar color.
+- Centralized the six severity colors so the legend and title details cannot drift apart.
+- Increased compact severity-label text for clearer catalog-card scanning.
+- Synchronized favorite-heart color and state immediately across Adult, Master and Favorites.
+
 ## [2.0.6] - 2026-08-17
 
 ### Unified UserList format

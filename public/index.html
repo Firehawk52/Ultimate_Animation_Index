@@ -16,7 +16,7 @@
       href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:ital,wght@0,600;0,700;0,800;1,700&family=Space+Grotesk:wght@400;500;600;700&display=swap"
       rel="stylesheet"
     />
-    <link rel="stylesheet" href="styles.css?v=2.0.6" />
+    <link rel="stylesheet" href="styles.css?v=2.0.7" />
   </head>
   <body>
     <div class="noise"></div>
@@ -192,8 +192,10 @@
           <button class="adult-chip" data-adult="disturbing">DISTURBING</button>
         </div>
         <div class="adult-legend">
-          <strong>CONTENT GUIDE</strong><span>None</span><span>Mild</span><span>Moderate</span
-          ><span>Strong</span><span>Very strong</span><span>Extreme</span>
+          <strong>CONTENT GUIDE</strong><span class="severity-0">None</span
+          ><span class="severity-1">Mild</span><span class="severity-2">Moderate</span
+          ><span class="severity-3">Strong</span><span class="severity-4">Very strong</span
+          ><span class="severity-5">Extreme</span>
         </div>
         <section class="card-grid adult-grid" id="adultCards"></section>
       </section>
@@ -366,6 +368,6 @@
     </dialog>
 
     <div class="toast" id="toast" popover="manual"></div>
-    <script type="module" src="app.js?v=2.0.6"></script>
+    <script type="module" src="app.js?v=2.0.7"></script>
   </body>
 </html>

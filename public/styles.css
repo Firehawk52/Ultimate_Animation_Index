@@ -11,6 +11,12 @@
   --violet: #8d6bff;
   --lime: #d7ff5f;
   --warn: #ffb84d;
+  --severity-none: #596272;
+  --severity-mild: #65c99a;
+  --severity-moderate: #d8c84f;
+  --severity-strong: #eea247;
+  --severity-very-strong: #f06b55;
+  --severity-extreme: #e9385d;
   --display: 'Barlow Condensed', 'Arial Narrow', sans-serif;
   --body: 'Space Grotesk', system-ui, sans-serif;
 }
@@ -2416,8 +2422,23 @@ textarea:focus-visible,
   top: 50%;
   width: 6px;
   height: 6px;
-  background: var(--warn);
+  background: var(--severity-none);
   transform: translateY(-50%) skewX(-18deg);
+}
+.adult-legend .severity-1:before {
+  background: var(--severity-mild);
+}
+.adult-legend .severity-2:before {
+  background: var(--severity-moderate);
+}
+.adult-legend .severity-3:before {
+  background: var(--severity-strong);
+}
+.adult-legend .severity-4:before {
+  background: var(--severity-very-strong);
+}
+.adult-legend .severity-5:before {
+  background: var(--severity-extreme);
 }
 .content-guide {
   display: grid;
@@ -2445,30 +2466,30 @@ textarea:focus-visible,
   display: block;
   width: 0;
   height: 100%;
-  background: #596272;
+  background: var(--severity-none);
   transition:
     width 180ms ease,
     background-color 180ms ease;
 }
 .content-row.severity-1 .content-meter i {
   width: 20%;
-  background: #65c99a;
+  background: var(--severity-mild);
 }
 .content-row.severity-2 .content-meter i {
   width: 40%;
-  background: #d8c84f;
+  background: var(--severity-moderate);
 }
 .content-row.severity-3 .content-meter i {
   width: 60%;
-  background: #eea247;
+  background: var(--severity-strong);
 }
 .content-row.severity-4 .content-meter i {
   width: 80%;
-  background: #f06b55;
+  background: var(--severity-very-strong);
 }
 .content-row.severity-5 .content-meter i {
   width: 100%;
-  background: #e9385d;
+  background: var(--severity-extreme);
   box-shadow: 0 0 8px rgb(233 56 93 / 45%);
 }
 .content-row.severity-0 b {
@@ -2491,12 +2512,12 @@ textarea:focus-visible,
   border-top: 1px solid #2f3642;
 }
 .content-guide.compact .content-row {
-  grid-template-columns: 78px 1fr 62px;
+  grid-template-columns: 90px 1fr 68px;
   gap: 6px;
   min-height: 18px;
 }
 .content-guide.compact .content-label {
-  font-size: 8px;
+  font-size: 9px;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -2505,7 +2526,7 @@ textarea:focus-visible,
   height: 5px;
 }
 .content-guide.compact .content-row b {
-  font-size: 8px;
+  font-size: 9px;
   text-align: right;
   color: #cfd5de;
 }

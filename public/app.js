@@ -8,7 +8,7 @@ import {
 
 (async () => {
   'use strict';
-  const APP_VERSION = '2.0.6';
+  const APP_VERSION = '2.0.7';
   const catalogResponse = await fetch('catalog.json');
   if (!catalogResponse.ok) throw new Error(`Could not load catalog (${catalogResponse.status})`);
   const CAT = await catalogResponse.json();
@@ -119,12 +119,24 @@ import {
   function isFavorite(id) {
     return favorites[id] === true;
   }
+  function syncFavoriteButtons(id) {
+    const favorite = isFavorite(id);
+    $$('[data-fav-id]')
+      .filter((button) => button.dataset.favId === id)
+      .forEach((button) => {
+        const label = favorite ? 'Remove from favorites' : 'Add to favorites';
+        button.classList.toggle('active', favorite);
+        button.textContent = favorite ? '♥' : '♡';
+        button.setAttribute('aria-label', label);
+        button.title = label;
+      });
+  }
   function toggleFavorite(id) {
     if (!itemById(id)) return;
     if (isFavorite(id)) delete favorites[id];
     else favorites[id] = true;
     save(STORE.favorites, favorites);
-    renderMaster({ noMeta: true });
+    syncFavoriteButtons(id);
     renderFavorites();
     updateStats();
     toast(isFavorite(id) ? 'Added to favorites' : 'Removed from favorites');
