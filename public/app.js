@@ -8,7 +8,7 @@ import {
 
 (async () => {
   'use strict';
-  const APP_VERSION = '2.0.7';
+  const APP_VERSION = '2.0.8';
   const catalogResponse = await fetch('catalog.json');
   if (!catalogResponse.ok) throw new Error(`Could not load catalog (${catalogResponse.status})`);
   const CAT = await catalogResponse.json();
@@ -44,11 +44,13 @@ import {
   const save = (k, v) => localStorage.setItem(k, JSON.stringify(v));
   const savedUI = load(STORE.ui, {});
   const adultModes = ['all', 'ecchi', 'erotic', 'hentai', 'gore', 'violence', 'disturbing'];
+  const collectionSortModes = ['rating', 'release', 'name'];
   const state = {
     visible: PAGE_SIZE,
     compact: load(STORE.compact, false),
     tab: 'master',
     adult: adultModes.includes(savedUI.adult) ? savedUI.adult : 'all',
+    collectionSort: collectionSortModes.includes(savedUI.collectionSort) ? savedUI.collectionSort : 'rating',
     ratingFormat: normalizeRatingFormat(savedUI.ratingFormat),
     server: false,
     signerCompatible: false,
@@ -255,7 +257,11 @@ import {
   }
 
   function saveUIState() {
-    const next = { adult: state.adult, ratingFormat: state.ratingFormat };
+    const next = {
+      adult: state.adult,
+      collectionSort: state.collectionSort,
+      ratingFormat: state.ratingFormat,
+    };
     for (const id of UI_VALUE_FIELDS) next[id] = $('#' + id).value;
     for (const id of UI_CHECKBOX_FIELDS) next[id] = $('#' + id).checked;
     save(STORE.ui, next);
@@ -525,15 +531,24 @@ import {
   function openCollection(id) {
     const c = CAT.collections.find((x) => x.id === id);
     if (!c) return;
-    let arr = c.items.map(itemById).filter(Boolean);
-    if (c.id === 'studio-ghibli') arr.sort((a, b) => (a.year || 9999) - (b.year || 9999));
-    else arr.sort((a, b) => (a.rank ?? 999999) - (b.rank ?? 999999));
+    const arr = c.items.map(itemById).filter(Boolean);
+    const rank = (item) => item.rank ?? 999999;
+    if (state.collectionSort === 'release')
+      arr.sort((a, b) => (b.year || 0) - (a.year || 0) || rank(a) - rank(b));
+    else if (state.collectionSort === 'name')
+      arr.sort((a, b) => a.title.localeCompare(b.title) || rank(a) - rank(b));
+    else arr.sort((a, b) => rank(a) - rank(b) || a.title.localeCompare(b.title));
     $('#collectionBody').innerHTML =
-      `<div class="collection-detail"><div class="meta">${esc(c.kind.toUpperCase())} // ${esc(c.mode.toUpperCase())} // ${arr.length} TITLES</div><h2>${esc(c.name)}</h2><p>${esc(c.description)}</p><div class="collection-title-list">${arr.map((x) => `<button class="collection-title" data-id="${esc(x.id)}"><b>${x.rank ? `#${String(x.rank).padStart(3, '0')}` : 'ADD'}</b><span>${esc(x.title)}${x.year ? ` <small>(${x.year})</small>` : ''}</span><em>${esc(qualityRatingLabel(x.tier, state.ratingFormat, { suffix: state.ratingFormat === 'ten' }))}</em></button>`).join('')}</div></div>`;
-    $('#collectionDialog').showModal();
+      `<div class="collection-detail"><div class="meta">${esc(c.kind.toUpperCase())} // ${esc(c.mode.toUpperCase())} // ${arr.length} TITLES</div><h2>${esc(c.name)}</h2><p>${esc(c.description)}</p><div class="collection-title-tools"><label><span>SORT TITLES</span><select id="collectionTitleSort" aria-label="Sort collection titles"><option value="rating" ${state.collectionSort === 'rating' ? 'selected' : ''}>RATING // HIGHEST FIRST</option><option value="release" ${state.collectionSort === 'release' ? 'selected' : ''}>RELEASE // NEWEST FIRST</option><option value="name" ${state.collectionSort === 'name' ? 'selected' : ''}>NAME // A–Z</option></select></label></div><div class="collection-title-list">${arr.map((x) => `<button class="collection-title" data-id="${esc(x.id)}"><b>${x.rank ? `#${String(x.rank).padStart(3, '0')}` : 'ADD'}</b><span>${esc(x.title)}${x.year ? ` <small>(${x.year})</small>` : ''}</span><em>${esc(qualityRatingLabel(x.tier, state.ratingFormat, { suffix: state.ratingFormat === 'ten' }))}</em></button>`).join('')}</div></div>`;
+    const dialog = $('#collectionDialog');
+    if (!dialog.open) dialog.showModal();
+    $('#collectionTitleSort').addEventListener('change', (event) => {
+      state.collectionSort = event.target.value;
+      saveUIState();
+      openCollection(id);
+    });
     $$('.collection-title', $('#collectionBody')).forEach((b) =>
       b.addEventListener('click', () => {
-        $('#collectionDialog').close();
         openDetail(b.dataset.id);
       }),
     );
@@ -2081,6 +2096,16 @@ import {
   $('#collectionDialog').addEventListener('click', (e) => {
     if (e.target === $('#collectionDialog')) $('#collectionDialog').close();
   });
+  document.addEventListener(
+    'keydown',
+    (event) => {
+      if (event.key !== 'Escape' || !$('#detailDialog').open || !$('#collectionDialog').open) return;
+      event.preventDefault();
+      event.stopPropagation();
+      $('#detailDialog').close();
+    },
+    true,
+  );
   $('#dismissUpdateBtn').addEventListener('click', () => {
     if (availableUpdate) save(STORE.dismissedUpdate, availableUpdate);
     const notice = $('#updateNotice');

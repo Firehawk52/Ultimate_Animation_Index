@@ -189,6 +189,11 @@ function validateUI(value) {
     if (!['tier', 'ten'].includes(source.ratingFormat)) throw new Error('invalid-rating-format');
     result.ratingFormat = source.ratingFormat;
   }
+  if (source.collectionSort !== undefined) {
+    if (!['rating', 'release', 'name'].includes(source.collectionSort))
+      throw new Error('invalid-collection-sort');
+    result.collectionSort = source.collectionSort;
+  }
   for (const key of ['hideCompleted', 'customOnly']) {
     if (typeof source[key] === 'boolean') result[key] = source[key];
   }
@@ -217,7 +222,7 @@ export function validateUserBackup(input) {
   };
 }
 
-export function createUserBackup(data, { createdAt = new Date().toISOString(), appVersion = '2.0.7' } = {}) {
+export function createUserBackup(data, { createdAt = new Date().toISOString(), appVersion = '2.0.8' } = {}) {
   return validateUserBackup({ format: FORMAT, version: VERSION, createdAt, appVersion, data });
 }
 

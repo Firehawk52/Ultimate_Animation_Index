@@ -40,7 +40,13 @@ function userData() {
     },
     favorites: { 'm:arcane:e7cbd6b1': true },
     episodeProgress: { 'tvmaze:123:season:1': { 1: 'watched', 2: 'watching' } },
-    ui: { searchInput: 'Arcane', statusFilter: 'Watching', ratingFormat: 'tier', hideCompleted: false },
+    ui: {
+      searchInput: 'Arcane',
+      statusFilter: 'Watching',
+      ratingFormat: 'tier',
+      collectionSort: 'release',
+      hideCompleted: false,
+    },
     compact: true,
   };
 }
@@ -48,7 +54,7 @@ function userData() {
 test('private user backups preserve all supported local user data', () => {
   const backup = createUserBackup(userData(), {
     createdAt: '2026-08-17T12:00:00.000Z',
-    appVersion: '2.0.7',
+    appVersion: '2.0.8',
   });
   const restored = validateUserBackup(JSON.parse(JSON.stringify(backup)));
   const summary = summarizeUserData(restored.data);
@@ -58,6 +64,7 @@ test('private user backups preserve all supported local user data', () => {
   assert.equal(restored.data.progress['m:arcane:e7cbd6b1'].note, 'Continue with season two.');
   assert.equal(restored.data.episodeProgress['tvmaze:123:season:1']['2'], 'watching');
   assert.equal(restored.data.ui.ratingFormat, 'tier');
+  assert.equal(restored.data.ui.collectionSort, 'release');
   assert.deepEqual(summary, {
     statuses: 1,
     ratings: 1,
@@ -77,6 +84,10 @@ test('backup validation rejects invalid status and episode values', () => {
   const badEpisode = createUserBackup(userData());
   badEpisode.data.episodeProgress['tvmaze:123:season:1']['2'] = 'complete';
   assert.throws(() => validateUserBackup(badEpisode), /invalid-episode-state/);
+
+  const badCollectionSort = createUserBackup(userData());
+  badCollectionSort.data.ui.collectionSort = 'random';
+  assert.throws(() => validateUserBackup(badCollectionSort), /invalid-collection-sort/);
 });
 
 test('merge import keeps current records while backup values win conflicts', () => {

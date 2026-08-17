@@ -2,6 +2,20 @@
 
 All notable changes to Ultimate Animation Index are documented here.
 
+## [2.0.8] - 2026-08-17
+
+### Compact top navigation
+
+- Reduced the sticky topbar height and internal spacing while preserving its angled branding and navigation hierarchy.
+- Scaled the brand mark, supporting type and add-title action proportionally across desktop and mobile layouts.
+- Kept the update notification offset aligned with the slimmer topbar.
+
+### Collection navigation and sorting
+
+- Kept the selected studio or creator title list open when viewing a title, so Escape returns one level at a time.
+- Added persistent collection-title sorting by rating, newest release or name.
+- Included the collection sort preference in private UI backups.
+
 ## [2.0.7] - 2026-08-17
 
 ### Content-guide color mapping
