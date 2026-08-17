@@ -8,7 +8,7 @@ import {
 
 (async () => {
   'use strict';
-  const APP_VERSION = '2.0.11';
+  const APP_VERSION = '2.0.12';
   const catalogResponse = await fetch('catalog.json');
   if (!catalogResponse.ok) throw new Error(`Could not load catalog (${catalogResponse.status})`);
   const CAT = await catalogResponse.json();
@@ -85,7 +85,7 @@ import {
   let metaPumping = false,
     metaSaveTimer = null;
   let availableUpdate = '';
-  let pendingEpisodeReset = null;
+  let pendingEpisodeAction = null;
   const masterItems = CAT.items || [];
   const masterById = new Map(masterItems.map((x) => [x.id, x]));
   const aliasMap = new Map();
@@ -721,6 +721,11 @@ import {
     });
   }
 
+  function episodeProgressMeterHTML(ratio, className) {
+    const percentage = Math.max(0, Math.min(100, Number(ratio || 0) * 100));
+    return `<span class="${className}" aria-hidden="true"><svg class="episode-progress-svg" viewBox="0 0 100 4" preserveAspectRatio="none"><rect class="episode-progress-track" width="100" height="4"></rect><rect class="episode-progress-fill" width="${percentage}" height="4"></rect></svg></span>`;
+  }
+
   function episodeTrackerHTML(owner, group, variant = 'detail') {
     const groupStats = groupEpisodeStats(group);
     const labels = trackerSeasonLabels(group.entries);
@@ -735,7 +740,7 @@ import {
     const liveStatus = seriesGroupNeedsRefresh(group)
       ? '<span class="series-live-status"><i></i>RELEASING // CHECKED ON OPEN</span>'
       : '';
-    return `<section class="episode-tracker ${variant === 'franchise' ? 'franchise-tracker' : ''}"><header class="episode-tracker-head"><div><span>UNIFIED SERIES PROGRESS</span><h4>${esc(owner.title)}</h4>${liveStatus}</div><div class="episode-total"><b>${groupStats.watched}<i>/</i>${groupStats.total}</b><span>EPISODES WATCHED</span></div></header><div class="episode-overview"><span><i style="--episode-progress:${percentage / 100}"></i></span><b>${percentage}%</b></div><div class="episode-key" aria-label="Episode status legend"><span class="unwatched">UNWATCHED</span><span class="watching">WATCHING</span><span class="watched">WATCHED</span></div><div class="season-stack">${group.entries
+    return `<section class="episode-tracker ${variant === 'franchise' ? 'franchise-tracker' : ''}"><header class="episode-tracker-head"><div><span>UNIFIED SERIES PROGRESS</span><h4>${esc(owner.title)}</h4>${liveStatus}</div><div class="episode-total"><b>${groupStats.watched}<i>/</i>${groupStats.total}</b><span>EPISODES WATCHED</span></div></header><div class="episode-overview">${episodeProgressMeterHTML(percentage / 100, 'episode-overview-meter')}<b>${percentage}%</b></div><div class="episode-key" aria-label="Episode status legend"><span class="unwatched">UNWATCHED</span><span class="watching">WATCHING</span><span class="watched">WATCHED</span></div><div class="season-stack">${group.entries
       .map((entry, index) => {
         const stats = entryEpisodeStats(entry);
         const state =
@@ -751,7 +756,7 @@ import {
         const episodeLabel = stats.total
           ? `${stats.total} episode${stats.total === 1 ? '' : 's'}`
           : 'Episode count pending';
-        return `<details class="season-row ${state}" ${index === firstIncomplete ? 'open' : ''}><summary><span class="season-code">${esc(labels[index])}</span>${entry.cover ? `<img src="${esc(entry.cover)}" alt="" loading="lazy">` : ''}<span class="season-copy"><b>${esc(entry.title)}</b><small>${esc([entry.year || '', entry.format || '', episodeLabel].filter(Boolean).join(' // '))}</small><span class="season-meter"><i style="--episode-progress:${ratio}"></i></span></span><span class="season-count"><b>${stats.watched}/${stats.total}</b><small>${state}</small></span><span class="season-chevron">+</span></summary><div class="season-episodes"><div class="season-actions"><button type="button" data-episode-action="continue" data-entry-id="${esc(entry.id)}">NEXT EPISODE</button><button type="button" data-episode-action="all-watched" data-entry-id="${esc(entry.id)}">MARK SEASON WATCHED</button><button type="button" data-episode-action="reset" data-entry-id="${esc(entry.id)}">RESET</button></div><div class="episode-grid">${episodes}</div></div></details>`;
+        return `<details class="season-row ${state}" ${index === firstIncomplete ? 'open' : ''}><summary><span class="season-code">${esc(labels[index])}</span>${entry.cover ? `<img src="${esc(entry.cover)}" alt="" loading="lazy">` : ''}<span class="season-copy"><b>${esc(entry.title)}</b><small>${esc([entry.year || '', entry.format || '', episodeLabel].filter(Boolean).join(' // '))}</small>${episodeProgressMeterHTML(ratio, 'season-meter')}</span><span class="season-count"><b>${stats.watched}/${stats.total}</b><small>${state}</small></span><span class="season-chevron">+</span></summary><div class="season-episodes"><div class="season-actions"><button type="button" data-episode-action="continue" data-entry-id="${esc(entry.id)}">NEXT EPISODE</button><button type="button" data-episode-action="all-watched" data-entry-id="${esc(entry.id)}">MARK SEASON WATCHED</button><button type="button" data-episode-action="reset" data-entry-id="${esc(entry.id)}">RESET</button></div><div class="episode-grid">${episodes}</div></div></details>`;
       })
       .join('')}</div></section>`;
   }
@@ -780,47 +785,71 @@ import {
     save(STORE.episodes, episodeProgress);
   }
 
-  function cancelEpisodeResetConfirmation({ restoreButton = true } = {}) {
-    if (!pendingEpisodeReset) return;
-    clearTimeout(pendingEpisodeReset.timer);
-    const button = pendingEpisodeReset.button;
-    pendingEpisodeReset = null;
+  const EPISODE_CONFIRM_ACTIONS = {
+    'all-watched': {
+      originalText: 'MARK SEASON WATCHED',
+      originalLabel: 'Mark every episode in this season as watched',
+      preparingLabel: 'Preparing mark season watched confirmation',
+      confirmText: 'CONFIRM WATCHED',
+      confirmLabel: 'Confirm marking every episode in this season as watched',
+      confirmClass: 'episode-watched-confirm',
+    },
+    reset: {
+      originalText: 'RESET',
+      originalLabel: 'Reset watched episodes for this season',
+      preparingLabel: 'Preparing reset confirmation',
+      confirmText: 'CONFIRM RESET',
+      confirmLabel: 'Confirm reset of watched episodes for this season',
+      confirmClass: 'episode-reset-confirm',
+    },
+  };
+
+  function cancelEpisodeActionConfirmation({ restoreButton = true } = {}) {
+    if (!pendingEpisodeAction) return;
+    clearTimeout(pendingEpisodeAction.timer);
+    const { button, config } = pendingEpisodeAction;
+    pendingEpisodeAction = null;
     if (!restoreButton || !button.isConnected) return;
     button.disabled = false;
-    button.classList.remove('episode-reset-arming', 'episode-reset-confirm');
+    button.classList.remove('episode-action-arming', 'episode-reset-confirm', 'episode-watched-confirm');
     button.removeAttribute('aria-busy');
-    button.setAttribute('aria-label', 'Reset watched episodes for this season');
-    button.textContent = 'RESET';
+    button.setAttribute('aria-label', config.originalLabel);
+    button.textContent = config.originalText;
   }
 
-  function armEpisodeResetConfirmation(button, entry) {
-    cancelEpisodeResetConfirmation();
+  function armEpisodeActionConfirmation(button, entry, action) {
+    const config = EPISODE_CONFIRM_ACTIONS[action];
+    if (!config) return false;
+    cancelEpisodeActionConfirmation();
     const pending = {
       button,
+      action,
+      config,
       entryKey: episodeKey(entry),
       ready: false,
       timer: null,
     };
-    pendingEpisodeReset = pending;
+    pendingEpisodeAction = pending;
     button.disabled = true;
-    button.classList.add('episode-reset-arming');
+    button.classList.add('episode-action-arming');
     button.setAttribute('aria-busy', 'true');
-    button.setAttribute('aria-label', 'Preparing reset confirmation');
+    button.setAttribute('aria-label', config.preparingLabel);
     button.innerHTML =
-      '<span class="episode-reset-loading" aria-hidden="true"><i></i><i></i><i></i></span><b>WAIT</b>';
+      '<span class="episode-action-loading" aria-hidden="true"><i></i><i></i><i></i></span><b>WAIT</b>';
     pending.timer = setTimeout(() => {
-      if (pendingEpisodeReset !== pending || !button.isConnected) {
-        if (pendingEpisodeReset === pending) pendingEpisodeReset = null;
+      if (pendingEpisodeAction !== pending || !button.isConnected) {
+        if (pendingEpisodeAction === pending) pendingEpisodeAction = null;
         return;
       }
       pending.ready = true;
       button.disabled = false;
-      button.classList.remove('episode-reset-arming');
-      button.classList.add('episode-reset-confirm');
+      button.classList.remove('episode-action-arming');
+      button.classList.add(config.confirmClass);
       button.removeAttribute('aria-busy');
-      button.setAttribute('aria-label', 'Confirm reset of watched episodes for this season');
-      button.textContent = 'CONFIRM RESET';
+      button.setAttribute('aria-label', config.confirmLabel);
+      button.textContent = config.confirmText;
     }, 2000);
+    return true;
   }
 
   function mountEpisodeTracker(mount, owner, group, variant = 'detail') {
@@ -834,24 +863,27 @@ import {
         const entry = group.entries.find((row) => row.id === button.dataset.entryId);
         if (!entry) return;
         const action = button.dataset.episodeAction;
-        if (action === 'cycle') {
+        if (action in EPISODE_CONFIRM_ACTIONS) {
+          const confirmed =
+            pendingEpisodeAction?.button === button &&
+            pendingEpisodeAction.action === action &&
+            pendingEpisodeAction.entryKey === episodeKey(entry) &&
+            pendingEpisodeAction.ready;
+          if (!confirmed) {
+            armEpisodeActionConfirmation(button, entry, action);
+            return;
+          }
+          cancelEpisodeActionConfirmation({ restoreButton: false });
+          if (action === 'all-watched') {
+            for (let number = 1; number <= Number(entry.episodes || 0); number++)
+              setEpisodeState(entry, number, 'watched');
+          } else {
+            delete episodeProgress[episodeKey(entry)];
+          }
+        } else if (action === 'cycle') {
           const number = Number(button.dataset.episode);
           const current = episodeState(entry, number);
           setEpisodeState(entry, number, EPISODE_STATES[(EPISODE_STATES.indexOf(current) + 1) % 3]);
-        } else if (action === 'all-watched') {
-          for (let number = 1; number <= Number(entry.episodes || 0); number++)
-            setEpisodeState(entry, number, 'watched');
-        } else if (action === 'reset') {
-          const confirmed =
-            pendingEpisodeReset?.button === button &&
-            pendingEpisodeReset.entryKey === episodeKey(entry) &&
-            pendingEpisodeReset.ready;
-          if (!confirmed) {
-            armEpisodeResetConfirmation(button, entry);
-            return;
-          }
-          cancelEpisodeResetConfirmation({ restoreButton: false });
-          delete episodeProgress[episodeKey(entry)];
         } else if (action === 'continue') {
           const total = Number(entry.episodes || 0);
           const active = Array.from({ length: total }, (_, index) => index + 1).find(
@@ -2257,14 +2289,14 @@ import {
   document.addEventListener(
     'click',
     (event) => {
-      if (!pendingEpisodeReset || !(event.target instanceof Element)) return;
+      if (!pendingEpisodeAction || !(event.target instanceof Element)) return;
       const button = event.target.closest('button');
-      if (button !== pendingEpisodeReset.button) cancelEpisodeResetConfirmation();
+      if (button !== pendingEpisodeAction.button) cancelEpisodeActionConfirmation();
     },
     true,
   );
-  $('#detailDialog').addEventListener('close', () => cancelEpisodeResetConfirmation());
-  $('#collectionDialog').addEventListener('close', () => cancelEpisodeResetConfirmation());
+  $('#detailDialog').addEventListener('close', () => cancelEpisodeActionConfirmation());
+  $('#collectionDialog').addEventListener('close', () => cancelEpisodeActionConfirmation());
   document.addEventListener(
     'keydown',
     (event) => {

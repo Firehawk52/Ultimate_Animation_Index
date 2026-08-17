@@ -56,7 +56,7 @@ function userData() {
 test('private user backups preserve all supported local user data', () => {
   const backup = createUserBackup(userData(), {
     createdAt: '2026-08-17T12:00:00.000Z',
-    appVersion: '2.0.11',
+    appVersion: '2.0.12',
   });
   const restored = validateUserBackup(JSON.parse(JSON.stringify(backup)));
   const summary = summarizeUserData(restored.data);

@@ -2,6 +2,14 @@
 
 All notable changes to Ultimate Animation Index are documented here.
 
+## [2.0.12] - 2026-08-18
+
+### Safer season completion
+
+- Applied the same two-second confirmation flow to **Mark season watched**.
+- Added a distinct green confirmation state while sharing cancellation, accessibility and loading behavior with reset.
+- Replaced CSP-blocked inline progress styles with SVG meters so overall and per-season status bars fill correctly.
+
 ## [2.0.11] - 2026-08-18
 
 ### Safer episode reset

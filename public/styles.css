@@ -2787,22 +2787,45 @@ textarea:focus-visible,
   padding: 12px 22px;
   border-bottom: 1px solid #252b35;
 }
-.episode-overview > span,
+.episode-overview-meter,
 .season-meter {
   height: 4px;
   overflow: hidden;
-  background: #242b36;
   transform: skewX(-18deg);
 }
-.episode-overview > span i,
-.season-meter i {
+.episode-progress-svg {
   display: block;
   width: 100%;
   height: 100%;
-  background: #67cadd;
-  transform: scaleX(var(--episode-progress, 0));
+}
+.episode-progress-track {
+  fill: #242b36;
+}
+.episode-progress-fill {
+  fill: #67cadd;
   transform-origin: left center;
-  transition: transform 240ms cubic-bezier(0.16, 1, 0.3, 1);
+  animation:
+    episode-progress-reveal 240ms cubic-bezier(0.16, 1, 0.3, 1) both,
+    episode-progress-pulse 2200ms ease-in-out 240ms infinite;
+}
+@keyframes episode-progress-reveal {
+  from {
+    transform: scaleX(0);
+  }
+  to {
+    transform: scaleX(1);
+  }
+}
+@keyframes episode-progress-pulse {
+  0%,
+  100% {
+    opacity: 0.72;
+    fill: #67cadd;
+  }
+  50% {
+    opacity: 1;
+    fill: #8bd9e6;
+  }
 }
 .episode-overview > b {
   color: #dce2e9;
@@ -2956,8 +2979,8 @@ textarea:focus-visible,
 .episode-button:active {
   transform: translateY(1px) scale(0.98);
 }
-.season-actions button.episode-reset-arming,
-.season-actions button.episode-reset-arming:disabled {
+.season-actions button.episode-action-arming,
+.season-actions button.episode-action-arming:disabled {
   min-width: 92px;
   border-color: #546271;
   background: #141b24;
@@ -2965,24 +2988,24 @@ textarea:focus-visible,
   cursor: wait;
   opacity: 1;
 }
-.episode-reset-loading {
+.episode-action-loading {
   display: inline-flex;
   align-items: center;
   gap: 3px;
   height: 10px;
   margin-right: 6px;
 }
-.episode-reset-loading i {
+.episode-action-loading i {
   width: 3px;
   height: 9px;
   background: #67cadd;
   transform: skewX(-18deg) scaleY(0.45);
-  animation: episode-reset-arm 660ms cubic-bezier(0.16, 1, 0.3, 1) infinite alternate;
+  animation: episode-action-arm 660ms cubic-bezier(0.16, 1, 0.3, 1) infinite alternate;
 }
-.episode-reset-loading i:nth-child(2) {
+.episode-action-loading i:nth-child(2) {
   animation-delay: 110ms;
 }
-.episode-reset-loading i:nth-child(3) {
+.episode-action-loading i:nth-child(3) {
   animation-delay: 220ms;
 }
 .season-actions button.episode-reset-confirm {
@@ -2994,7 +3017,16 @@ textarea:focus-visible,
   border-color: #f0788f;
   background: #381c27;
 }
-@keyframes episode-reset-arm {
+.season-actions button.episode-watched-confirm {
+  border-color: #8fb760;
+  background: #1b2818;
+  color: #f3ffe9;
+}
+.season-actions button.episode-watched-confirm:hover {
+  border-color: #b9df68;
+  background: #24351f;
+}
+@keyframes episode-action-arm {
   from {
     opacity: 0.35;
     transform: skewX(-18deg) scaleY(0.45);
@@ -3182,7 +3214,10 @@ textarea:focus-visible,
   .backup-preview.loading::before {
     animation: none;
   }
-  .episode-reset-loading i {
+  .episode-progress-fill {
+    animation: none;
+  }
+  .episode-action-loading i {
     animation: none;
     opacity: 0.8;
     transform: skewX(-18deg) scaleY(0.8);
