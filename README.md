@@ -2,7 +2,6 @@
 
 [![CI](https://github.com/Firehawk52/Ultimate_Animation_Index/actions/workflows/ci.yml/badge.svg)](https://github.com/Firehawk52/Ultimate_Animation_Index/actions/workflows/ci.yml)
 ![Node.js 20+](https://img.shields.io/badge/Node.js-20%2B-5FA04E?logo=nodedotjs&logoColor=white)
-![Python 3.10+](https://img.shields.io/badge/Python-3.10%2B-3776AB?logo=python&logoColor=white)
 ![Self-hosted](https://img.shields.io/badge/deployment-self--hosted-7C5CFC)
 
 A private-by-default, self-hosted watchlist for anime and animation from every era,
@@ -65,8 +64,7 @@ episode jumps and explicit `ESSENTIAL`, `OPTIONAL` or `SKIP` decisions.
 
 ## Quick start
 
-Install [Node.js 20+](https://nodejs.org/) and [Python 3.10+](https://www.python.org/),
-then run:
+Install [Node.js 20+](https://nodejs.org/), then run:
 
 ```bash
 git clone https://github.com/Firehawk52/Ultimate_Animation_Index.git
@@ -85,7 +83,7 @@ Windows and macOS users can also use the included launchers after cloning:
 ## How it works
 
 ```text
-Curated Python source
+Curated JSON source
         │
         ▼
 public/catalog.json ──► Browser application ──► Local watch data
@@ -97,16 +95,16 @@ public/catalog.json ──► Browser application ──► Local watch data
                          Local cover cache
 ```
 
-`npm start` generates the catalog only when it is missing. The Node.js server then
-serves the browser application, validates signed UserLists, enriches titles with public
-metadata and gradually fills the local artwork cache.
+`npm start` generates the catalog when it is missing or its version-controlled source
+has changed. The Node.js server then serves the browser application, validates signed
+UserLists, enriches titles with public metadata and gradually fills the local artwork
+cache.
 
 ## Project structure
 
 ```text
 .
-├── build_catalog.py      # Catalog source, curation rules and generator
-├── data/                 # Input data retained from earlier catalog versions
+├── data/                 # Human-maintained catalog source
 ├── public/               # Browser application; catalog.json is generated locally
 ├── scripts/              # Cross-platform build and startup helpers
 ├── server.mjs            # Static server, metadata cache and UserList API
@@ -114,8 +112,8 @@ metadata and gradually fills the local artwork cache.
 └── .github/workflows/    # Automated GitHub checks
 ```
 
-The browser is dependency-free at runtime. Node.js serves the static files and the
-small local API. Python generates the catalog on the first run.
+The browser is dependency-free at runtime. Node.js validates the catalog source,
+generates the local browser database and serves the static files and small local API.
 
 The repository contains source code only. Generated catalog data, covers, metadata
 caches, signing keys and installed packages are intentionally excluded from Git.
@@ -132,14 +130,14 @@ caches, signing keys and installed packages are intentionally excluded from Git.
 
 ### Windows
 
-1. Install Node.js 20 or newer and Python 3.10 or newer.
+1. Install Node.js 20 or newer.
 2. Double-click `RUN.bat`.
 3. Your default browser opens automatically when the server is ready.
 4. Keep the terminal window open while you use the site.
 
 ### macOS
 
-1. Install Node.js 20 or newer and Python 3.10 or newer.
+1. Install Node.js 20 or newer.
 2. Double-click `RUN.command`.
 3. Your default browser opens automatically when the server is ready.
 
@@ -168,7 +166,6 @@ npm start
 Requirements:
 
 - Node.js 20 or newer
-- Python 3.10 or newer
 
 Install the development formatter and run the project checks:
 
@@ -181,13 +178,13 @@ npm test
 
 Useful commands:
 
-| Command                 | Purpose                                                 |
-| ----------------------- | ------------------------------------------------------- |
-| `npm start`             | Generate a missing catalog, then start on port 8787     |
-| `npm run build:catalog` | Regenerate the readable `public/catalog.json`           |
-| `npm run format`        | Format the human-maintained web and documentation files |
-| `npm run check`         | Check JavaScript syntax                                 |
-| `npm test`              | Run server integration tests                            |
+| Command                 | Purpose                                                  |
+| ----------------------- | -------------------------------------------------------- |
+| `npm start`             | Generate a missing catalog, then start on port 8787      |
+| `npm run build:catalog` | Validate the source and regenerate `public/catalog.json` |
+| `npm run format`        | Format the human-maintained web and documentation files  |
+| `npm run check`         | Check JavaScript syntax                                  |
+| `npm test`              | Run server integration tests                             |
 
 Pull requests run the same checks through GitHub Actions. The workflow builds and
 tests the catalog without adding the generated file to Git.
@@ -369,7 +366,8 @@ Aliases are normalized where possible. Separate remakes or adaptations can still
 
 ## Rebuilding the catalog
 
-The source list is in `build_catalog.py`.
+The human-maintained source is in `data/catalog-source.json`. Node.js validates its
+structure, duplicate IDs and collection references before generating the browser copy.
 
 Run this when you want to rebuild it explicitly:
 
@@ -383,9 +381,10 @@ This regenerates the browser's catalog:
 public/catalog.json
 ```
 
-The JSON is formatted with indentation and line breaks for local inspection. It is a
-generated artifact, is ignored by Git and should not be edited or committed. If the
-file is missing, `npm start` creates it automatically.
+The generated JSON is formatted with indentation and line breaks for local inspection.
+It is ignored by Git and should not be edited or committed. Edit the source file
+instead. If `public/catalog.json` is missing or outdated, `npm start` creates it
+automatically using Node.js; Python is not required.
 
 ## Contributing and security
 

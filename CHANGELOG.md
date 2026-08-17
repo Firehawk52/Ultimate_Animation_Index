@@ -2,6 +2,16 @@
 
 All notable changes to Ultimate Animation Index are documented here.
 
+## [2.0.5] - 2026-08-17
+
+### Node-only catalog generation
+
+- Removed Python from local startup, Docker and continuous integration requirements.
+- Replaced the Python catalog builder with a Node.js generator and structural validator.
+- Added a readable, version-controlled catalog source while keeping the generated browser database outside Git.
+- Regenerated the local browser database automatically when it is missing or its source has changed.
+- Kept explicit `npm run build:catalog` rebuilding for development workflows.
+
 ## [2.0.4] - 2026-08-17
 
 ### Automatic update notifications

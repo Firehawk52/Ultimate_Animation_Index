@@ -4,15 +4,15 @@ Thanks for helping improve the Ultimate Animation Index.
 
 ## Before making a change
 
-1. Install Node.js 20 or newer and Python 3.10 or newer.
+1. Install Node.js 20 or newer.
 2. Run `npm install` once to install the formatter.
 3. Keep the change focused. Avoid committing local covers, metadata caches or
    UserList signing keys.
 
 ## Catalog changes
 
-The source of truth is `build_catalog.py`, with legacy input in
-`data/original-v1.json`. Do not edit the generated `public/catalog.json` directly.
+The source of truth is the readable `data/catalog-source.json`. Do not edit the
+generated `public/catalog.json` directly.
 
 After changing catalog data or curation rules, run:
 
@@ -20,10 +20,9 @@ After changing catalog data or curation rules, run:
 npm run build:catalog
 ```
 
-Do not commit the generated catalog file; CI rebuilds it from the source. Stable title
-IDs are derived from normalized titles, so renaming an existing canonical title can
-affect saved browser data and imported UserLists. Add an alias when a rename is meant
-to preserve identity.
+Do not commit the generated catalog file; CI rebuilds it from the source. Keep existing
+title IDs stable when renaming a canonical title because those IDs connect saved browser
+data and imported UserLists. Add an alias when a rename is meant to preserve identity.
 
 ## Application changes
 
