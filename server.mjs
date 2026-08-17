@@ -356,6 +356,7 @@ function normMetaTitle(s = '') {
 
 // Metadata provider adapters
 const ANILIST_FIELDS = `id title{romaji english native} coverImage{extraLarge large} bannerImage seasonYear format status episodes duration genres tags{name rank isMediaSpoiler} averageScore siteUrl description(asHtml:false) isAdult studios(isMain:true){nodes{name}}`;
+const ANILIST_SERIES_FIELDS = `id title{romaji english native} coverImage{extraLarge large} seasonYear startDate{year month day} format status episodes duration siteUrl relations{edges{relationType(version:2) node{id type}}}`;
 
 function contentLabels(labels = []) {
   const relevant =
@@ -475,6 +476,87 @@ async function fetchAniList(query, variables) {
   const j = await r.json();
   if (j.errors?.length) throw new Error('anilist-graphql');
   return j.data || {};
+}
+
+export function fromAniListSeriesMedia(media) {
+  if (!media?.id) return null;
+  const onePart = ['MOVIE', 'SPECIAL', 'OVA'].includes(media.format);
+  return {
+    id: String(media.id),
+    title: media.title?.english || media.title?.romaji || `AniList ${media.id}`,
+    altTitle: media.title?.romaji || '',
+    year: media.seasonYear || media.startDate?.year || 0,
+    startDate: [media.startDate?.year, media.startDate?.month, media.startDate?.day]
+      .map((value) => String(value || 0).padStart(2, '0'))
+      .join('-'),
+    format: media.format || '',
+    status: media.status || '',
+    episodes: Number(media.episodes) || (onePart ? 1 : 0),
+    duration: Number(media.duration) || 0,
+    cover: media.coverImage?.extraLarge || media.coverImage?.large || '',
+    siteUrl: media.siteUrl || '',
+    relations: (media.relations?.edges || [])
+      .filter((edge) => edge?.node?.type === 'ANIME' && ['PREQUEL', 'SEQUEL'].includes(edge.relationType))
+      .map((edge) => ({ id: String(edge.node.id), type: edge.relationType })),
+  };
+}
+
+async function fetchAniListSeriesNodes(ids) {
+  if (!ids.length) return [];
+  const definitions = ids.map((_, index) => `$id${index}:Int!`).join(',');
+  const fields = ids
+    .map((_, index) => `m${index}:Media(id:$id${index},type:ANIME){${ANILIST_SERIES_FIELDS}}`)
+    .join('\n');
+  const variables = Object.fromEntries(ids.map((id, index) => [`id${index}`, Number(id)]));
+  const data = await fetchAniList(`query(${definitions}){${fields}}`, variables);
+  return ids.map((_, index) => fromAniListSeriesMedia(data[`m${index}`])).filter(Boolean);
+}
+
+async function getAniListSeries(title) {
+  const key = `series:anilist:${normMetaTitle(title)}`;
+  const cached = metadataCache[key];
+  if (cached?.data && Date.now() - cached.ts < META_TTL) return cached.data;
+
+  const rootData = await fetchAniList(
+    `query($search:String!){Media(search:$search,type:ANIME){${ANILIST_SERIES_FIELDS}}}`,
+    { search: title },
+  );
+  const root = fromAniListSeriesMedia(rootData.Media);
+  if (!root) throw new Error('not-found');
+  const entries = new Map([[root.id, root]]);
+  const queued = new Set(root.relations.map((relation) => relation.id));
+
+  while (queued.size && entries.size < 30) {
+    const ids = [...queued].filter((id) => !entries.has(id)).slice(0, 8);
+    ids.forEach((id) => queued.delete(id));
+    if (!ids.length) break;
+    const rows = await fetchAniListSeriesNodes(ids);
+    for (const row of rows) {
+      entries.set(row.id, row);
+      for (const relation of row.relations) {
+        if (!entries.has(relation.id)) queued.add(relation.id);
+      }
+    }
+  }
+
+  const localized = [];
+  for (const entry of entries.values()) {
+    localized.push({
+      ...entry,
+      cover: await localizeCover(entry.cover),
+      relations: undefined,
+    });
+  }
+  localized.sort(
+    (a, b) =>
+      a.startDate.localeCompare(b.startDate) ||
+      (a.year || 9999) - (b.year || 9999) ||
+      Number(a.id) - Number(b.id),
+  );
+  const result = { source: 'anilist', rootId: root.id, title, entries: localized };
+  metadataCache[key] = { ts: Date.now(), data: result };
+  persistCacheSoon();
+  return result;
 }
 async function metaAniList(title) {
   const query = `query($s:String){Media(search:$s,type:ANIME){${ANILIST_FIELDS}}}`;
@@ -935,6 +1017,14 @@ export const server = http.createServer(async (req, res) => {
       const title = safeText(u.searchParams.get('title') || '', 180, true);
       if (!title) return send(res, 400, { error: 'invalid-title' });
       const data = await getMetadata(kind, title);
+      return send(res, 200, { ok: true, data });
+    }
+    if (u.pathname === '/api/series' && req.method === 'GET') {
+      const kind = u.searchParams.get('kind') || '';
+      const title = safeText(u.searchParams.get('title') || '', 180, true);
+      if (!title) return send(res, 400, { error: 'invalid-title' });
+      if (kind !== 'anilist') return send(res, 400, { error: 'unsupported-metadata-kind' });
+      const data = await getAniListSeries(title);
       return send(res, 200, { ok: true, data });
     }
     if (u.pathname === '/api/resolve' && req.method === 'GET') {

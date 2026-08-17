@@ -2250,6 +2250,403 @@ textarea:focus-visible,
     grid-template-columns: 130px minmax(80px, 1fr) 86px 32px;
   }
 }
+
+/* Unified season and episode progress */
+.episode-tracker-mount {
+  margin: 26px 0 8px;
+}
+.episode-tracker {
+  border: 1px solid #343c49;
+  background: #0b0e14;
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 4%);
+  clip-path: polygon(0 0, calc(100% - 16px) 0, 100% 16px, 100% 100%, 0 100%);
+}
+.episode-tracker-head {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: end;
+  gap: 20px;
+  padding: 20px 22px 14px;
+  border-bottom: 1px solid #343c49;
+}
+.episode-tracker-head > div:first-child > span {
+  color: #67cadd;
+  font: 800 9px var(--body);
+  letter-spacing: 0.16em;
+}
+.episode-tracker-head h4 {
+  margin: 5px 0 0;
+  color: #f3f1eb;
+  font: 800 24px/1 var(--display);
+  letter-spacing: 0.015em;
+  text-transform: uppercase;
+}
+.episode-total {
+  text-align: right;
+}
+.episode-total b {
+  display: block;
+  color: #f3f1eb;
+  font: 800 26px/0.9 var(--display);
+}
+.episode-total b i {
+  padding: 0 3px;
+  color: #677181;
+  font-style: normal;
+}
+.episode-total span {
+  color: #8f99a8;
+  font: 700 8px var(--body);
+  letter-spacing: 0.12em;
+}
+.episode-overview {
+  display: grid;
+  grid-template-columns: 1fr 42px;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 22px;
+  border-bottom: 1px solid #252b35;
+}
+.episode-overview > span,
+.season-meter {
+  height: 4px;
+  overflow: hidden;
+  background: #242b36;
+  transform: skewX(-18deg);
+}
+.episode-overview > span i,
+.season-meter i {
+  display: block;
+  width: 100%;
+  height: 100%;
+  background: #67cadd;
+  transform: scaleX(var(--episode-progress, 0));
+  transform-origin: left center;
+  transition: transform 240ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+.episode-overview > b {
+  color: #dce2e9;
+  font: 800 10px var(--body);
+  text-align: right;
+}
+.episode-key {
+  display: flex;
+  gap: 16px;
+  padding: 10px 22px;
+  border-bottom: 1px solid #343c49;
+}
+.episode-key span {
+  position: relative;
+  padding-left: 13px;
+  color: #8f99a8;
+  font: 800 8px var(--body);
+  letter-spacing: 0.09em;
+}
+.episode-key span::before {
+  position: absolute;
+  top: 50%;
+  left: 0;
+  width: 7px;
+  height: 7px;
+  border: 1px solid currentColor;
+  content: '';
+  transform: translateY(-50%) skewX(-16deg);
+}
+.episode-key .watching {
+  color: #67cadd;
+}
+.episode-key .watched {
+  color: #b9df68;
+}
+.season-row {
+  border-bottom: 1px solid #343c49;
+}
+.season-row:last-child {
+  border-bottom: 0;
+}
+.season-row > summary {
+  display: grid;
+  grid-template-columns: 48px 38px minmax(0, 1fr) 62px 20px;
+  align-items: center;
+  gap: 12px;
+  min-height: 76px;
+  padding: 10px 16px;
+  cursor: pointer;
+  list-style: none;
+  transition: background-color 180ms ease;
+}
+.season-row > summary::-webkit-details-marker {
+  display: none;
+}
+.season-row > summary:hover {
+  background: #121720;
+}
+.season-code {
+  color: #67cadd;
+  font: 800 17px var(--display);
+  letter-spacing: 0.04em;
+}
+.season-row > summary > img {
+  width: 38px;
+  height: 54px;
+  border: 1px solid #434b58;
+  object-fit: cover;
+}
+.season-copy {
+  display: grid;
+  min-width: 0;
+  gap: 4px;
+}
+.season-copy > b {
+  overflow: hidden;
+  color: #edf0f3;
+  font: 800 14px var(--display);
+  letter-spacing: 0.02em;
+  text-overflow: ellipsis;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+.season-copy > small {
+  color: #8f99a8;
+  font: 700 8px var(--body);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.season-count {
+  display: grid;
+  justify-items: end;
+  gap: 2px;
+}
+.season-count b {
+  color: #f0f2f5;
+  font: 800 14px var(--display);
+}
+.season-count small {
+  color: #8f99a8;
+  font: 700 7px var(--body);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.season-row.watching .season-count small {
+  color: #67cadd;
+}
+.season-row.watched .season-count small {
+  color: #b9df68;
+}
+.season-chevron {
+  color: #8f99a8;
+  font: 500 20px var(--body);
+  transition: transform 200ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+.season-row[open] .season-chevron {
+  transform: rotate(45deg);
+}
+.season-episodes {
+  padding: 14px 16px 18px;
+  border-top: 1px solid #252b35;
+  background: #0e1219;
+}
+.season-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+  margin-bottom: 12px;
+}
+.season-actions button,
+.episode-load-error button {
+  min-height: 32px;
+  padding: 7px 10px;
+  border: 1px solid #566171;
+  background: #171c25;
+  color: #dce2e9;
+  font: 800 9px var(--display);
+  letter-spacing: 0.06em;
+  transition:
+    transform 160ms cubic-bezier(0.16, 1, 0.3, 1),
+    border-color 160ms ease,
+    background-color 160ms ease;
+}
+.season-actions button:hover,
+.episode-load-error button:hover {
+  border-color: #67cadd;
+  background: #1d2530;
+}
+.season-actions button:active,
+.episode-load-error button:active,
+.episode-button:active {
+  transform: translateY(1px) scale(0.98);
+}
+.episode-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(48px, 1fr));
+  gap: 6px;
+}
+.episode-button {
+  position: relative;
+  min-height: 38px;
+  overflow: hidden;
+  border: 1px solid #3d4653;
+  background: #151a22;
+  color: #9aa4b3;
+  font: 800 10px var(--body);
+  clip-path: polygon(5px 0, 100% 0, 100% calc(100% - 5px), calc(100% - 5px) 100%, 0 100%, 0 5px);
+  transition:
+    transform 160ms cubic-bezier(0.16, 1, 0.3, 1),
+    color 160ms ease,
+    border-color 160ms ease,
+    background-color 160ms ease;
+}
+.episode-button:hover {
+  border-color: #758193;
+  background: #1b222c;
+  color: #f0f2f5;
+}
+.episode-button.watching {
+  border-color: #4e9bab;
+  background: #14262c;
+  color: #8ed8e7;
+}
+.episode-button.watched {
+  border-color: #78934b;
+  background: #202a17;
+  color: #c8e68a;
+}
+.episode-button i {
+  position: absolute;
+  right: 4px;
+  bottom: 4px;
+  width: 7px;
+  height: 2px;
+  background: currentColor;
+  opacity: 0.5;
+  transform: skewX(-22deg);
+}
+.episode-button.watching i {
+  animation: episode-breathe 1.8s ease-in-out infinite;
+}
+.episode-empty {
+  grid-column: 1 / -1;
+  padding: 16px;
+  border: 1px dashed #3d4653;
+  color: #8f99a8;
+  font-size: 11px;
+}
+.episode-loading,
+.episode-load-error {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  align-items: center;
+  gap: 12px;
+  min-height: 70px;
+  padding: 18px;
+  border: 1px solid #343c49;
+  background: #0b0e14;
+  color: #9aa4b3;
+  font: 700 10px var(--body);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.episode-loading i {
+  width: 28px;
+  height: 5px;
+  background: #67cadd;
+  animation: episode-loading 1.2s ease-in-out infinite;
+  transform-origin: left center;
+}
+.episode-load-error {
+  grid-template-columns: 1fr auto;
+}
+.episode-load-error b,
+.episode-load-error span {
+  display: block;
+}
+.episode-load-error b {
+  color: #ef6f86;
+}
+.episode-load-error span {
+  margin-top: 4px;
+  color: #8f99a8;
+  font-size: 9px;
+}
+.franchise-episode-mount {
+  margin: 22px 0 28px;
+}
+.franchise-tracker .episode-tracker-head h4 {
+  font-size: 21px;
+}
+@keyframes episode-breathe {
+  0%,
+  100% {
+    opacity: 0.28;
+    transform: scaleX(0.55) skewX(-22deg);
+  }
+  50% {
+    opacity: 1;
+    transform: scaleX(1) skewX(-22deg);
+  }
+}
+@keyframes episode-loading {
+  0%,
+  100% {
+    opacity: 0.35;
+    transform: scaleX(0.3) skewX(-18deg);
+  }
+  50% {
+    opacity: 1;
+    transform: scaleX(1) skewX(-18deg);
+  }
+}
+@media (max-width: 860px) {
+  .episode-tracker-head {
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+  .episode-total {
+    text-align: left;
+  }
+  .season-row > summary {
+    grid-template-columns: 42px minmax(0, 1fr) 54px 18px;
+    gap: 8px;
+    padding: 9px 11px;
+  }
+  .season-row > summary > img {
+    display: none;
+  }
+  .episode-grid {
+    grid-template-columns: repeat(auto-fill, minmax(44px, 1fr));
+  }
+  .episode-key {
+    gap: 10px;
+    overflow-x: auto;
+  }
+  .episode-key span {
+    white-space: nowrap;
+  }
+}
+@media (max-width: 520px) {
+  .episode-tracker-head,
+  .episode-overview,
+  .episode-key {
+    padding-right: 14px;
+    padding-left: 14px;
+  }
+  .season-copy > b {
+    font-size: 12px;
+  }
+  .season-count small {
+    display: none;
+  }
+  .season-actions {
+    display: grid;
+    grid-template-columns: 1fr;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .episode-button.watching i,
+  .episode-loading i {
+    animation: none;
+  }
+}
 @media (max-width: 560px) {
   .hero-actions {
     display: grid;

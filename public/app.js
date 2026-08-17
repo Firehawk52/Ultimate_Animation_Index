@@ -13,6 +13,8 @@
     compact: 'uai:compact:v1',
     favorites: 'uai:favorites:v1',
     ui: 'uai:ui-state:v1',
+    episodes: 'uai:episode-progress:v1',
+    series: 'uai:series-groups:v1',
   };
   const $ = (s, r = document) => r.querySelector(s),
     $$ = (s, r = document) => [...r.querySelectorAll(s)];
@@ -49,13 +51,16 @@
     customTitles = load(STORE.custom, []),
     sources = load(STORE.sources, {}),
     meta = load(STORE.meta, {}),
-    favorites = load(STORE.favorites, {});
+    favorites = load(STORE.favorites, {}),
+    episodeProgress = load(STORE.episodes, {}),
+    seriesGroups = load(STORE.series, {});
   const META_TTL = 1000 * 60 * 60 * 24 * 30;
   const NO_META = new URLSearchParams(location.search).has('nometa');
   const META_BATCH_SIZE = 12,
     META_BATCH_DELAY = 2200;
   const metaQueue = [],
     metaQueued = new Set();
+  const seriesLoading = new Map();
   let metaPumping = false,
     metaSaveTimer = null;
   const masterItems = CAT.items || [];
@@ -505,6 +510,254 @@
     );
   }
 
+  // One sparse episode state is shared by title details and franchise guides.
+  const EPISODE_STATES = ['unwatched', 'watching', 'watched'];
+
+  function canTrackEpisodes(x) {
+    if (!x || x.api !== 'anilist') return false;
+    return /series|tv|ova|ona|special/i.test(`${x.type || ''} ${meta[x.id]?.data?.format || ''}`);
+  }
+
+  function episodeKey(entry) {
+    return `anilist:${entry.id}`;
+  }
+
+  function episodeState(entry, number) {
+    const value = episodeProgress[episodeKey(entry)]?.[number];
+    return EPISODE_STATES.includes(value) ? value : 'unwatched';
+  }
+
+  function setEpisodeState(entry, number, status) {
+    const key = episodeKey(entry);
+    if (!episodeProgress[key] || typeof episodeProgress[key] !== 'object') episodeProgress[key] = {};
+    if (status === 'unwatched') delete episodeProgress[key][number];
+    else episodeProgress[key][number] = status;
+    if (!Object.keys(episodeProgress[key]).length) delete episodeProgress[key];
+  }
+
+  function entryEpisodeStats(entry) {
+    const total = Math.max(0, Number(entry.episodes) || 0);
+    let watching = 0,
+      watched = 0;
+    for (let number = 1; number <= total; number++) {
+      const status = episodeState(entry, number);
+      if (status === 'watching') watching++;
+      if (status === 'watched') watched++;
+    }
+    return { total, watching, watched, touched: watching + watched };
+  }
+
+  function groupEpisodeStats(group) {
+    return (group?.entries || []).reduce(
+      (sum, entry) => {
+        const current = entryEpisodeStats(entry);
+        sum.total += current.total;
+        sum.watching += current.watching;
+        sum.watched += current.watched;
+        return sum;
+      },
+      { total: 0, watching: 0, watched: 0 },
+    );
+  }
+
+  function derivedEpisodeStatus(group) {
+    const stats = groupEpisodeStats(group);
+    if (stats.total && stats.watched === stats.total) return 'Completed';
+    if (stats.watching || stats.watched) return 'Watching';
+    return 'Not started';
+  }
+
+  function cachedSeriesGroup(x) {
+    const record = seriesGroups[x.id];
+    return record?.data && Date.now() - Number(record.ts || 0) < META_TTL ? record.data : null;
+  }
+
+  async function loadSeriesGroup(x, { force = false } = {}) {
+    if (!canTrackEpisodes(x)) return null;
+    if (!force) {
+      const cached = cachedSeriesGroup(x);
+      if (cached) return cached;
+    }
+    if (!state.server) throw new Error('Series metadata service is offline.');
+    if (seriesLoading.has(x.id)) return seriesLoading.get(x.id);
+    const task = (async () => {
+      const response = await fetch(
+        `/api/series?kind=anilist&title=${encodeURIComponent(x.lookupTitle || x.title)}`,
+        { cache: force ? 'reload' : 'default' },
+      );
+      const result = await response.json();
+      if (!response.ok || !result.ok || !Array.isArray(result.data?.entries))
+        throw new Error(result.error || 'Series metadata was not found.');
+      const matches = result.data.entries.some((entry) =>
+        metadataMatchesTitle(
+          x.lookupTitle || x.title,
+          { canonicalTitle: entry.title, altTitle: entry.altTitle },
+          x.year,
+        ),
+      );
+      if (!matches) throw new Error('The provider returned a different series.');
+      seriesGroups[x.id] = { ts: Date.now(), data: result.data };
+      save(STORE.series, seriesGroups);
+      return result.data;
+    })().finally(() => seriesLoading.delete(x.id));
+    seriesLoading.set(x.id, task);
+    return task;
+  }
+
+  function trackerSeasonLabels(entries) {
+    let season = 0;
+    return entries.map((entry) => {
+      if (['TV', 'TV_SHORT', 'ONA'].includes(entry.format)) {
+        season++;
+        return `S${String(season).padStart(2, '0')}`;
+      }
+      if (entry.format === 'MOVIE') return 'FILM';
+      if (entry.format === 'SPECIAL') return 'SP';
+      if (entry.format === 'OVA') return 'OVA';
+      return entry.format || 'PART';
+    });
+  }
+
+  function episodeTrackerHTML(owner, group, variant = 'detail') {
+    const groupStats = groupEpisodeStats(group);
+    const labels = trackerSeasonLabels(group.entries);
+    const firstIncomplete = Math.max(
+      0,
+      group.entries.findIndex((entry) => {
+        const stats = entryEpisodeStats(entry);
+        return stats.total && stats.watched < stats.total;
+      }),
+    );
+    const percentage = groupStats.total ? Math.round((groupStats.watched / groupStats.total) * 100) : 0;
+    return `<section class="episode-tracker ${variant === 'franchise' ? 'franchise-tracker' : ''}"><header class="episode-tracker-head"><div><span>UNIFIED SERIES PROGRESS</span><h4>${esc(owner.title)}</h4></div><div class="episode-total"><b>${groupStats.watched}<i>/</i>${groupStats.total}</b><span>EPISODES WATCHED</span></div></header><div class="episode-overview"><span><i style="--episode-progress:${percentage / 100}"></i></span><b>${percentage}%</b></div><div class="episode-key" aria-label="Episode status legend"><span class="unwatched">UNWATCHED</span><span class="watching">WATCHING</span><span class="watched">WATCHED</span></div><div class="season-stack">${group.entries
+      .map((entry, index) => {
+        const stats = entryEpisodeStats(entry);
+        const state =
+          stats.total && stats.watched === stats.total ? 'watched' : stats.touched ? 'watching' : 'unwatched';
+        const ratio = stats.total ? stats.watched / stats.total : 0;
+        const episodes = stats.total
+          ? Array.from({ length: stats.total }, (_, episodeIndex) => {
+              const number = episodeIndex + 1;
+              const status = episodeState(entry, number);
+              return `<button class="episode-button ${status}" type="button" data-episode-action="cycle" data-entry-id="${esc(entry.id)}" data-episode="${number}" aria-label="${esc(`${entry.title}, episode ${number}: ${status}`)}" title="${esc(`Episode ${number}: ${status}`)}"><span>E${String(number).padStart(2, '0')}</span><i></i></button>`;
+            }).join('')
+          : '<div class="episode-empty">Episode count is not available from the provider.</div>';
+        const episodeLabel = stats.total
+          ? `${stats.total} episode${stats.total === 1 ? '' : 's'}`
+          : 'Episode count pending';
+        return `<details class="season-row ${state}" ${index === firstIncomplete ? 'open' : ''}><summary><span class="season-code">${esc(labels[index])}</span>${entry.cover ? `<img src="${esc(entry.cover)}" alt="" loading="lazy">` : ''}<span class="season-copy"><b>${esc(entry.title)}</b><small>${esc([entry.year || '', entry.format || '', episodeLabel].filter(Boolean).join(' // '))}</small><span class="season-meter"><i style="--episode-progress:${ratio}"></i></span></span><span class="season-count"><b>${stats.watched}/${stats.total}</b><small>${state}</small></span><span class="season-chevron">+</span></summary><div class="season-episodes"><div class="season-actions"><button type="button" data-episode-action="continue" data-entry-id="${esc(entry.id)}">NEXT EPISODE</button><button type="button" data-episode-action="all-watched" data-entry-id="${esc(entry.id)}">MARK SEASON WATCHED</button><button type="button" data-episode-action="reset" data-entry-id="${esc(entry.id)}">RESET</button></div><div class="episode-grid">${episodes}</div></div></details>`;
+      })
+      .join('')}</div></section>`;
+  }
+
+  function syncTitleStatusFromEpisodes(owner, group) {
+    const current = pFor(owner.id);
+    progress[owner.id] = { ...current, status: derivedEpisodeStatus(group) };
+    save(STORE.progress, progress);
+    const modal = $('#modalStatus');
+    if (modal && $('#dialogBody').dataset.itemId === owner.id) modal.value = progress[owner.id].status;
+  }
+
+  function applyManualTitleStatusToEpisodes(group, status) {
+    if (!group) return;
+    if (status === 'Completed') {
+      for (const entry of group.entries) {
+        for (let number = 1; number <= Number(entry.episodes || 0); number++)
+          setEpisodeState(entry, number, 'watched');
+      }
+    } else if (status === 'Not started') {
+      for (const entry of group.entries) delete episodeProgress[episodeKey(entry)];
+    } else if (status === 'Watching' && !groupEpisodeStats(group).watching) {
+      const entry = group.entries.find((row) => Number(row.episodes) > 0);
+      if (entry) setEpisodeState(entry, 1, 'watching');
+    }
+    save(STORE.episodes, episodeProgress);
+  }
+
+  function mountEpisodeTracker(mount, owner, group, variant = 'detail') {
+    mount.dataset.episodeOwner = owner.id;
+    mount.dataset.episodeVariant = variant;
+    mount.innerHTML = episodeTrackerHTML(owner, group, variant);
+    $$('[data-episode-action]', mount).forEach((button) =>
+      button.addEventListener('click', (event) => {
+        event.preventDefault();
+        event.stopPropagation();
+        const entry = group.entries.find((row) => row.id === button.dataset.entryId);
+        if (!entry) return;
+        const action = button.dataset.episodeAction;
+        if (action === 'cycle') {
+          const number = Number(button.dataset.episode);
+          const current = episodeState(entry, number);
+          setEpisodeState(entry, number, EPISODE_STATES[(EPISODE_STATES.indexOf(current) + 1) % 3]);
+        } else if (action === 'all-watched') {
+          for (let number = 1; number <= Number(entry.episodes || 0); number++)
+            setEpisodeState(entry, number, 'watched');
+        } else if (action === 'reset') {
+          delete episodeProgress[episodeKey(entry)];
+        } else if (action === 'continue') {
+          const total = Number(entry.episodes || 0);
+          const active = Array.from({ length: total }, (_, index) => index + 1).find(
+            (number) => episodeState(entry, number) === 'watching',
+          );
+          if (active) setEpisodeState(entry, active, 'watched');
+          const next = Array.from({ length: total }, (_, index) => index + 1).find(
+            (number) => episodeState(entry, number) === 'unwatched',
+          );
+          if (next) setEpisodeState(entry, next, 'watching');
+        }
+        save(STORE.episodes, episodeProgress);
+        syncTitleStatusFromEpisodes(owner, group);
+        refreshEpisodeTrackers(owner, group);
+        renderMaster({ noMeta: true });
+        if (state.tab === 'adult') renderAdult();
+        if (state.tab === 'favorites') renderFavorites();
+        updateStats();
+      }),
+    );
+  }
+
+  function refreshEpisodeTrackers(owner, group) {
+    $$('.episode-tracker-mount').forEach((mount) => {
+      if (mount.dataset.episodeOwner === owner.id)
+        mountEpisodeTracker(mount, owner, group, mount.dataset.episodeVariant || 'detail');
+    });
+  }
+
+  async function populateEpisodeMount(mount, owner, variant = 'detail') {
+    mount.dataset.episodeOwner = owner.id;
+    mount.dataset.episodeVariant = variant;
+    mount.innerHTML = '<div class="episode-loading"><i></i><span>Loading connected seasons…</span></div>';
+    try {
+      const group = await loadSeriesGroup(owner);
+      if (!group || !document.contains(mount)) return;
+      mountEpisodeTracker(mount, owner, group, variant);
+    } catch (error) {
+      if (!document.contains(mount)) return;
+      mount.innerHTML = `<div class="episode-load-error"><b>EPISODE DATA UNAVAILABLE</b><span>${esc(error.message)}</span><button type="button">TRY AGAIN</button></div>`;
+      $('button', mount).onclick = () => populateEpisodeMount(mount, owner, variant);
+    }
+  }
+
+  function franchiseRepresentative(franchise) {
+    const all = canonicalItems();
+    const direct = findEquivalent({ title: franchise.name, year: 0, type: 'Series' }, all);
+    if (direct && canTrackEpisodes(direct)) return direct;
+    const target = norm(franchise.name)
+      .replace(/\bseries\b/g, '')
+      .trim();
+    const partial = all
+      .filter((item) => canTrackEpisodes(item) && target && norm(item.title).includes(target))
+      .sort(
+        (a, b) => norm(a.title).length - norm(b.title).length || (a.rank ?? 999999) - (b.rank ?? 999999),
+      )[0];
+    if (partial) return partial;
+    for (const step of franchise.orders.flatMap((order) => order.steps || [])) {
+      const item = findEquivalent({ title: step.title, year: 0, type: 'Series' }, all);
+      if (item && canTrackEpisodes(item)) return item;
+    }
+    return null;
+  }
+
   function renderFranchises() {
     const q = $('#franchiseSearch').value.trim().toLowerCase();
     const arr = CAT.franchises.filter(
@@ -512,11 +765,20 @@
     );
     $('#franchiseCount').textContent = `${arr.length} GUIDES`;
     $('#franchiseStack').innerHTML = arr
-      .map(
-        (f, i) =>
-          `<details class="franchise"><summary><span class="franchise-no">${String(i + 1).padStart(2, '0')}</span><h3>${esc(f.name)}</h3><span class="franchise-chevron">+</span></summary><div class="franchise-body"><p class="franchise-summary">${esc(f.summary)}</p>${f.orders.map((o) => `<section class="order-block"><h4>${esc(o.label)}</h4>${o.note ? `<p class="order-note">${esc(o.note)}</p>` : ''}<div class="steps">${o.steps.map((s) => `<div class="step"><span class="step-n">${esc(s.n)}</span><span class="step-title">${esc(s.title)}${s.note ? `<small class="step-note">${esc(s.note)}</small>` : ''}</span><span class="flag ${esc(s.flag)}">${esc(s.flag)}</span></div>`).join('')}</div></section>`).join('')}</div></details>`,
-      )
+      .map((f, i) => {
+        const representative = franchiseRepresentative(f);
+        return `<details class="franchise" ${representative ? `data-series-owner="${esc(representative.id)}"` : ''}><summary><span class="franchise-no">${String(i + 1).padStart(2, '0')}</span><h3>${esc(f.name)}</h3><span class="franchise-chevron">+</span></summary><div class="franchise-body"><p class="franchise-summary">${esc(f.summary)}</p>${representative ? `<div class="episode-tracker-mount franchise-episode-mount" data-episode-owner="${esc(representative.id)}" data-episode-variant="franchise"></div>` : ''}${f.orders.map((o) => `<section class="order-block"><h4>${esc(o.label)}</h4>${o.note ? `<p class="order-note">${esc(o.note)}</p>` : ''}<div class="steps">${o.steps.map((s) => `<div class="step"><span class="step-n">${esc(s.n)}</span><span class="step-title">${esc(s.title)}${s.note ? `<small class="step-note">${esc(s.note)}</small>` : ''}</span><span class="flag ${esc(s.flag)}">${esc(s.flag)}</span></div>`).join('')}</div></section>`).join('')}</div></details>`;
+      })
       .join('');
+    $$('details.franchise[data-series-owner]', $('#franchiseStack')).forEach((details) =>
+      details.addEventListener('toggle', () => {
+        if (!details.open || details.dataset.seriesLoaded) return;
+        details.dataset.seriesLoaded = '1';
+        const owner = itemById(details.dataset.seriesOwner);
+        const mount = $('.franchise-episode-mount', details);
+        if (owner && mount) populateEpisodeMount(mount, owner, 'franchise');
+      }),
+    );
   }
 
   // Server availability and UserList sharing
@@ -1055,13 +1317,17 @@
     return `<section class="custom-editor"><h4>Edit custom metadata</h4><p>These fields are included when this title is exported in a signed UserList. Provider-based content ratings are estimates and should be reviewed.</p><button id="refreshCustomMetadata" class="slash-button small" type="button">${x.contentEstimated ? 'REFRESH ESTIMATED METADATA' : 'FIND MISSING METADATA'}</button><div class="custom-editor-grid"><label class="field-label">TITLE<input id="customTitle" maxlength="180" value="${esc(x.title)}"></label><div class="field-row"><label class="field-label">YEAR<input id="customYear" type="number" min="0" max="2200" value="${Number(x.year) || ''}" placeholder="Unknown"></label><label class="field-label">FORMAT<select id="customType">${formats.map((type) => `<option ${x.type === type ? 'selected' : ''}>${esc(type)}</option>`).join('')}</select></label></div><label class="field-label">ORIGIN<input id="customOrigin" maxlength="80" value="${esc(x.origin || '')}" placeholder="Japan / US / China / …"></label><label class="field-label">GENRES / TAGS<textarea id="customGenres" maxlength="500" placeholder="Fantasy, Adventure, Drama">${esc(x.genres || '')}</textarea></label><label class="field-label">CONTENT LABELS<input id="customContentTags" maxlength="500" value="${esc(content.tags.join(', '))}" placeholder="Ecchi, Gore, Adult Only, …"></label><div class="custom-content-fields">${levels.map(([label, key]) => `<label>${esc(label)}<input id="customContent-${key}" type="number" min="0" max="5" step="1" value="${content[key]}"><span>/5</span></label>`).join('')}</div></div></section>`;
   }
 
+  function hasUnsafeText(value) {
+    return /[<>\u0000-\u001f\u007f]/.test(value);
+  }
+
   function parseCustomTags(raw) {
     const tags = [];
     const seen = new Set();
     for (const part of String(raw).split(',')) {
       const tag = part.trim();
       if (!tag) continue;
-      if (tag.length > 40 || /[<> -]/.test(tag))
+      if (tag.length > 40 || hasUnsafeText(tag))
         throw new Error('Each content label must be 40 safe characters or fewer.');
       const key = tag.toLowerCase();
       if (!seen.has(key)) {
@@ -1081,10 +1347,10 @@
     const genres = $('#customGenres').value.trim();
     const lookupChanged =
       norm(title) !== norm(x.lookupTitle || x.title) || type !== x.type || norm(origin) !== norm(x.origin);
-    if (!title || title.length > 180 || /[<> -]/.test(title)) throw new Error('Enter a valid title.');
+    if (!title || title.length > 180 || hasUnsafeText(title)) throw new Error('Enter a valid title.');
     if (!Number.isInteger(year) || year < 0 || year > 2200) throw new Error('Enter a valid year.');
-    if (origin.length > 80 || /[<> -]/.test(origin)) throw new Error('Enter a valid origin.');
-    if (genres.length > 500 || /[<> -]/.test(genres))
+    if (origin.length > 80 || hasUnsafeText(origin)) throw new Error('Enter a valid origin.');
+    if (genres.length > 500 || hasUnsafeText(genres))
       throw new Error('Genres and tags must be 500 safe characters or fewer.');
     const duplicate = findEquivalent(
       { title, year, type },
@@ -1124,6 +1390,9 @@
 
   function removeCustomTitle(x) {
     if (!x?.custom) return;
+    const group = cachedSeriesGroup(x);
+    for (const entry of group?.entries || []) delete episodeProgress[episodeKey(entry)];
+    delete seriesGroups[x.id];
     customTitles = customTitles.filter((title) => title.id !== x.id);
     delete progress[x.id];
     delete myOpinions[x.id];
@@ -1143,6 +1412,8 @@
     save(STORE.favorites, favorites);
     save(STORE.meta, meta);
     save(STORE.sources, sources);
+    save(STORE.episodes, episodeProgress);
+    save(STORE.series, seriesGroups);
     populateFilters();
     $('#detailDialog').close();
     renderAll();
@@ -1169,7 +1440,8 @@
       sc.overall ? `Overall ${sc.overall}` : '',
     ].filter(Boolean);
     $('#dialogBody').innerHTML =
-      `<div class="detail-hero">${bg ? `<img class="detail-bg" src="${esc(bg)}" alt="">` : ''}<div class="detail-heading"><div class="kicker">${x.rank ? `MASTER RANK #${String(x.rank).padStart(3, '0')}` : 'CUSTOM ADDITION'} // ${esc(x.tier || '')}</div><h2>${esc(x.title)}</h2></div></div><div class="detail-content"><div class="detail-facts">${facts.map((f) => `<span class="fact">${esc(f)}</span>`).join('')}</div><div class="detail-grid"><div>${m.description ? `<h4>Synopsis</h4><p>${esc(m.description)}</p>` : '<p class="metadata-wait">Synopsis will appear when metadata is available.</p>'}${x.watch_note ? `<div class="callout"><h4>Watch note</h4><p>${esc(x.watch_note)}</p></div>` : ''}${x.caveat ? `<div class="callout"><h4>Worth knowing</h4><p>${esc(x.caveat)}</p></div>` : ''}${m.siteUrl ? `<a class="external-link" href="${esc(m.siteUrl)}" target="_blank" rel="noopener">OPEN SOURCE ↗</a>` : ''}<h4>Content</h4>${contentGuide(x, false)}${x.custom ? customEditorHTML(x) : ''}${ops.length ? `<h4>Imported opinions</h4><div class="source-opinion-list">${ops.map((o) => `<div class="source-opinion"><b>${esc(o.label)}</b><span class="${o.verdict === 'recommend' ? 'yes' : 'no'}">${o.verdict === 'recommend' ? 'RECOMMENDED' : 'NOT RECOMMENDED'}</span></div>`).join('')}</div>` : ''}</div><aside><div class="user-edit"><button id="modalFavorite" class="favorite-detail ${isFavorite(id) ? 'active' : ''}" type="button">${isFavorite(id) ? '♥ FAVORITE' : '♡ ADD TO FAVORITES'}</button><label>MY RECOMMENDATION</label><div class="verdict-row"><button class="verdict-btn rec ${verdict === 'recommend' ? 'active' : ''}" data-v="recommend">RECOMMEND</button><button class="verdict-btn no ${verdict === 'avoid' ? 'active' : ''}" data-v="avoid">DON'T RECOMMEND</button><button class="verdict-btn neutral ${!verdict ? 'active' : ''}" data-v="">NEUTRAL</button></div><label>WATCH STATUS</label><select id="modalStatus">${['Not started', 'Watching', 'Completed', 'On hold', 'Dropped'].map((s) => `<option ${p.status === s ? 'selected' : ''}>${s}</option>`).join('')}</select><label>MY RATING /10</label><input id="modalRating" type="number" min="0" max="10" step="0.5" value="${p.rating || ''}" placeholder="Unrated"><label>PRIVATE NOTE</label><textarea id="modalNote" maxlength="2000">${esc(p.note || '')}</textarea><button class="slash-button hot wide" id="saveDetail">${x.custom ? 'SAVE TITLE + LOCAL DATA' : 'SAVE LOCAL DATA'}</button>${x.custom ? '<button class="danger-button wide" id="removeCustomTitle" type="button">REMOVE CUSTOM TITLE</button>' : ''}</div></aside></div></div>`;
+      `<div class="detail-hero">${bg ? `<img class="detail-bg" src="${esc(bg)}" alt="">` : ''}<div class="detail-heading"><div class="kicker">${x.rank ? `MASTER RANK #${String(x.rank).padStart(3, '0')}` : 'CUSTOM ADDITION'} // ${esc(x.tier || '')}</div><h2>${esc(x.title)}</h2></div></div><div class="detail-content"><div class="detail-facts">${facts.map((f) => `<span class="fact">${esc(f)}</span>`).join('')}</div><div class="detail-grid"><div>${m.description ? `<h4>Synopsis</h4><p>${esc(m.description)}</p>` : '<p class="metadata-wait">Synopsis will appear when metadata is available.</p>'}${x.watch_note ? `<div class="callout"><h4>Watch note</h4><p>${esc(x.watch_note)}</p></div>` : ''}${x.caveat ? `<div class="callout"><h4>Worth knowing</h4><p>${esc(x.caveat)}</p></div>` : ''}${m.siteUrl ? `<a class="external-link" href="${esc(m.siteUrl)}" target="_blank" rel="noopener">OPEN SOURCE ↗</a>` : ''}<h4>Content</h4>${contentGuide(x, false)}${canTrackEpisodes(x) ? `<div id="episodeTrackerMount" class="episode-tracker-mount" data-episode-owner="${esc(x.id)}" data-episode-variant="detail"></div>` : ''}${x.custom ? customEditorHTML(x) : ''}${ops.length ? `<h4>Imported opinions</h4><div class="source-opinion-list">${ops.map((o) => `<div class="source-opinion"><b>${esc(o.label)}</b><span class="${o.verdict === 'recommend' ? 'yes' : 'no'}">${o.verdict === 'recommend' ? 'RECOMMENDED' : 'NOT RECOMMENDED'}</span></div>`).join('')}</div>` : ''}</div><aside><div class="user-edit"><button id="modalFavorite" class="favorite-detail ${isFavorite(id) ? 'active' : ''}" type="button">${isFavorite(id) ? '♥ FAVORITE' : '♡ ADD TO FAVORITES'}</button><label>MY RECOMMENDATION</label><div class="verdict-row"><button class="verdict-btn rec ${verdict === 'recommend' ? 'active' : ''}" data-v="recommend">RECOMMEND</button><button class="verdict-btn no ${verdict === 'avoid' ? 'active' : ''}" data-v="avoid">DON'T RECOMMEND</button><button class="verdict-btn neutral ${!verdict ? 'active' : ''}" data-v="">NEUTRAL</button></div><label>WATCH STATUS</label><select id="modalStatus">${['Not started', 'Watching', 'Completed', 'On hold', 'Dropped'].map((s) => `<option ${p.status === s ? 'selected' : ''}>${s}</option>`).join('')}</select><label>MY RATING /10</label><input id="modalRating" type="number" min="0" max="10" step="0.5" value="${p.rating || ''}" placeholder="Unrated"><label>PRIVATE NOTE</label><textarea id="modalNote" maxlength="2000">${esc(p.note || '')}</textarea><button class="slash-button hot wide" id="saveDetail">${x.custom ? 'SAVE TITLE + LOCAL DATA' : 'SAVE LOCAL DATA'}</button>${x.custom ? '<button class="danger-button wide" id="removeCustomTitle" type="button">REMOVE CUSTOM TITLE</button>' : ''}</div></aside></div></div>`;
+    $('#dialogBody').dataset.itemId = id;
     $('#modalFavorite').onclick = () => {
       toggleFavorite(id);
       const b = $('#modalFavorite');
@@ -1232,6 +1504,7 @@
         rating: Number($('#modalRating').value) || 0,
         note: $('#modalNote').value.trim(),
       };
+      applyManualTitleStatusToEpisodes(cachedSeriesGroup(x), progress[id].status);
       if (selectedVerdict) myOpinions[id] = selectedVerdict;
       else delete myOpinions[id];
       save(STORE.progress, progress);
@@ -1242,6 +1515,11 @@
       if (metadataChanged) refreshCustomMetadata(x, { force: true, silent: true });
     };
     $('#detailDialog').showModal();
+    const episodeMount = $('#episodeTrackerMount');
+    if (episodeMount) {
+      episodeMount.closest('.detail-grid')?.after(episodeMount);
+      populateEpisodeMount(episodeMount, x, 'detail');
+    }
     if (x.custom) refreshCustomMetadata(x, { silent: true });
     else queueMetadata([x], { priority: true });
   }

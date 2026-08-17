@@ -3,7 +3,7 @@ import { after, before, test } from 'node:test';
 
 process.env.UAI_SKIP_WARM = '1';
 
-const { estimateContentRatings, server, startServer } = await import('../server.mjs');
+const { estimateContentRatings, fromAniListSeriesMedia, server, startServer } = await import('../server.mjs');
 let baseUrl;
 
 before(async () => {
@@ -82,6 +82,37 @@ test('provider metadata is converted into conservative content-rating estimates'
       tags: ['Horror', 'Gore', 'Torture'],
     },
   );
+});
+
+test('AniList series entries retain episodes and only main sequence relations', () => {
+  const entry = fromAniListSeriesMedia({
+    id: 42,
+    title: { english: 'Example Special', romaji: 'Example' },
+    seasonYear: 2026,
+    startDate: { year: 2026, month: 4, day: 9 },
+    format: 'SPECIAL',
+    episodes: null,
+    relations: {
+      edges: [
+        { relationType: 'SEQUEL', node: { id: 43, type: 'ANIME' } },
+        { relationType: 'SIDE_STORY', node: { id: 44, type: 'ANIME' } },
+        { relationType: 'PREQUEL', node: { id: 45, type: 'MANGA' } },
+      ],
+    },
+  });
+
+  assert.equal(entry.id, '42');
+  assert.equal(entry.episodes, 1);
+  assert.equal(entry.startDate, '2026-04-09');
+  assert.deepEqual(entry.relations, [{ id: '43', type: 'SEQUEL' }]);
+});
+
+test('series endpoint rejects unsupported providers without making an external request', async () => {
+  const response = await fetch(`${baseUrl}/api/series?kind=wiki&title=Example`);
+  const body = await response.json();
+
+  assert.equal(response.status, 400);
+  assert.equal(body.error, 'unsupported-metadata-kind');
 });
 
 test('signed UserLists preserve editable custom-title metadata', async () => {

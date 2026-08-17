@@ -18,6 +18,8 @@ There is no title limit. The list can keep growing as new and older work is adde
 - **Local personal data:** progress, ratings, notes and favorites stay in your browser
 - **Cover-level progress:** distinct status icons show not started, watching, completed,
   on hold and dropped titles without opening their details
+- **Unified episode tracking:** AniList sequels and prequels are grouped into seasons under one series,
+  with the same episode state shown in title details and franchise guides
 - **Curated navigation:** rankings, filters, collections and detailed franchise guides
 - **Clear content guidance:** separate severity levels for sexual content, nudity,
   violence, gore and disturbing material
@@ -41,6 +43,14 @@ age label. Bar length, color, plain-language severity and the numeric source val
 communicate the same level without relying on color alone.
 
 ![Independent content severity bars](docs/screenshots/content-severity.png)
+
+### One tracker for the complete series
+
+Connected AniList seasons, OVAs and concluding specials appear in one compact tracker.
+Every episode has a distinct Unwatched, Watching or Watched state, while season controls
+handle common actions without turning the interface into a spreadsheet.
+
+![Unified season and episode progress](docs/screenshots/episode-progress.png)
 
 ### Practical franchise guides
 
@@ -187,6 +197,7 @@ tests the catalog without adding the generated file to Git.
 - Adult section with Ecchi, Erotic, Hentai, Gore, Extreme Violence and Disturbing filters
 - Plain-language content levels for Sexual content, Nudity, Violence, Gore and Disturbing content
 - Personal watch status, ratings and private notes
+- Per-episode Unwatched, Watching and Watched progress grouped by connected seasons
 - Recommended / Not recommended marks
 - Signed UserList sharing by text code
 - Custom title additions with global duplicate checking
@@ -218,6 +229,20 @@ Metadata lookup results are stored in:
 ```
 
 Keep `covers/` when updating the app if you want to preserve downloaded artwork.
+
+## Unified season and episode progress
+
+For AniList-backed series, the server follows AniList's official `PREQUEL` and `SEQUEL`
+relations to group separately listed seasons and concluding specials under one catalog title.
+The relation model follows the [AniList Media relations documentation](https://docs.anilist.co/guide/graphql/queries/media#get-the-relations-of-a-media).
+
+Each episode starts as **Unwatched** and can be cycled to **Watching**, **Watched** and
+back to **Unwatched**. Season-level actions can advance to the next episode, mark a full
+season as watched or reset it. The same sparse local state powers both the title detail
+dialog and its franchise guide, so the two views cannot drift apart.
+
+Episode progress stays in the current browser under `uai:episode-progress:v1`. It is
+private local data and is not included in exported UserLists.
 
 ## UserList sharing
 
