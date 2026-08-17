@@ -16,7 +16,7 @@
       href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:ital,wght@0,600;0,700;0,800;1,700&family=Space+Grotesk:wght@400;500;600;700&display=swap"
       rel="stylesheet"
     />
-    <link rel="stylesheet" href="styles.css?v=2.0.9" />
+    <link rel="stylesheet" href="styles.css?v=2.0.10" />
   </head>
   <body>
     <div class="noise"></div>
@@ -111,19 +111,31 @@
             <option>Dropped</option>
           </select>
           <select id="ratingFormatSelect" aria-label="Rating format">
-            <option value="tier">RATING: S+ SCALE</option>
+            <option value="tier">RATING: LETTER SCALE</option>
             <option value="ten">RATING: 10 SCALE</option>
           </select>
-          <select id="sortSelect" aria-label="Sort order">
+          <select id="sortSelect" aria-label="Sort titles by">
             <option value="rank">MASTER RANK</option>
             <option value="overall">OVERALL SCORE</option>
             <option value="production">PRODUCTION</option>
             <option value="story">STORY</option>
             <option value="emotional">EMOTIONAL PAYOFF</option>
-            <option value="year">NEWEST</option>
-            <option value="title">A-Z</option>
+            <option value="year">RELEASE DATE</option>
+            <option value="title">NAME</option>
             <option value="myrating">MY RATING</option>
           </select>
+          <button
+            id="masterSortOrder"
+            class="master-sort-order"
+            type="button"
+            aria-label="Change to ascending order"
+            title="Change to ascending order"
+          >
+            <svg viewBox="0 0 20 20" aria-hidden="true">
+              <path d="M3 5h9M3 9h7M3 13h5M15 4v12m-3-3 3 3 3-3" />
+            </svg>
+            <b>DESC</b>
+          </button>
           <button id="viewToggle" class="square-button" title="Toggle compact view">▥</button>
         </div>
         <div class="result-line">
@@ -371,6 +383,6 @@
     </dialog>
 
     <div class="toast" id="toast" popover="manual"></div>
-    <script type="module" src="app.js?v=2.0.9"></script>
+    <script type="module" src="app.js?v=2.0.10"></script>
   </body>
 </html>

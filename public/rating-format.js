@@ -9,13 +9,22 @@ const QUALITY_VALUES = {
   'S+': 10,
 };
 
+const QUALITY_TIERS = {
+  B: 'D',
+  'B+': 'C',
+  A: 'B',
+  'A+': 'A',
+  S: 'A+',
+  'S+': 'S',
+};
+
 const PERSONAL_TIERS = [
-  { tier: 'S+', minimum: 9.5, value: 10 },
-  { tier: 'S', minimum: 9, value: 9 },
-  { tier: 'A+', minimum: 8, value: 8 },
-  { tier: 'A', minimum: 7, value: 7 },
-  { tier: 'B+', minimum: 6, value: 6 },
-  { tier: 'B', minimum: Number.EPSILON, value: 5 },
+  { tier: 'S', minimum: 10, value: 10 },
+  { tier: 'A+', minimum: 9, value: 9 },
+  { tier: 'A', minimum: 8, value: 8 },
+  { tier: 'B', minimum: 7, value: 7 },
+  { tier: 'C', minimum: 6, value: 6 },
+  { tier: 'D', minimum: Number.EPSILON, value: 5 },
 ];
 
 export function normalizeRatingFormat(value) {
@@ -24,7 +33,8 @@ export function normalizeRatingFormat(value) {
 
 export function qualityRatingLabel(tier, format = 'tier', { suffix = false } = {}) {
   const normalizedTier = String(tier || 'CUSTOM').toUpperCase();
-  if (normalizeRatingFormat(format) === 'tier' || !(normalizedTier in QUALITY_VALUES)) return normalizedTier;
+  if (!(normalizedTier in QUALITY_VALUES)) return normalizedTier;
+  if (normalizeRatingFormat(format) === 'tier') return QUALITY_TIERS[normalizedTier];
   const value = QUALITY_VALUES[normalizedTier];
   return suffix ? `${value}/10` : String(value);
 }

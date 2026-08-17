@@ -194,6 +194,15 @@ function validateUI(value) {
       throw new Error('invalid-collection-sort');
     result.collectionSort = source.collectionSort;
   }
+  if (source.collectionSortOrder !== undefined) {
+    if (!['asc', 'desc'].includes(source.collectionSortOrder))
+      throw new Error('invalid-collection-sort-order');
+    result.collectionSortOrder = source.collectionSortOrder;
+  }
+  if (source.masterSortOrder !== undefined) {
+    if (!['asc', 'desc'].includes(source.masterSortOrder)) throw new Error('invalid-master-sort-order');
+    result.masterSortOrder = source.masterSortOrder;
+  }
   for (const key of ['hideCompleted', 'customOnly']) {
     if (typeof source[key] === 'boolean') result[key] = source[key];
   }
@@ -222,7 +231,7 @@ export function validateUserBackup(input) {
   };
 }
 
-export function createUserBackup(data, { createdAt = new Date().toISOString(), appVersion = '2.0.9' } = {}) {
+export function createUserBackup(data, { createdAt = new Date().toISOString(), appVersion = '2.0.10' } = {}) {
   return validateUserBackup({ format: FORMAT, version: VERSION, createdAt, appVersion, data });
 }
 

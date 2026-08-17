@@ -1,6 +1,6 @@
 # Ultimate Animation Index
 
-[![CI](https://github.com/Firehawk52/Ultimate_Animation_Index/actions/workflows/ci.yml/badge.svg)](https://github.com/Firehawk52/Ultimate_Animation_Index/actions/workflows/ci.yml)
+[![CI](https://github.com/Firehawk52/ultimate-animation-index/actions/workflows/ci.yml/badge.svg)](https://github.com/Firehawk52/ultimate-animation-index/actions/workflows/ci.yml)
 ![Node.js 20+](https://img.shields.io/badge/Node.js-20%2B-5FA04E?logo=nodedotjs&logoColor=white)
 ![Self-hosted](https://img.shields.io/badge/deployment-self--hosted-7C5CFC)
 
@@ -17,7 +17,7 @@ See the [changelog](CHANGELOG.md) for release history and version 2.0 details.
 
 - **One worldwide catalog:** anime, films, OVAs, donghua and animation beyond Japan
 - **Local personal data:** progress, ratings, notes and favorites stay in your browser
-- **Selectable rating format:** use either the S+ letter scale or a 10-point scale throughout the interface
+- **Selectable rating format:** use either the S–D letter scale or a 10-point scale throughout the interface
 - **Update notifications:** receive an in-app link when a newer GitHub release is available
 - **Cover-level progress:** distinct status icons show not started, watching, completed,
   on hold and dropped titles without opening their details
@@ -67,8 +67,8 @@ episode jumps and explicit `ESSENTIAL`, `OPTIONAL` or `SKIP` decisions.
 Install [Node.js 20+](https://nodejs.org/), then run:
 
 ```bash
-git clone https://github.com/Firehawk52/Ultimate_Animation_Index.git
-cd Ultimate_Animation_Index
+git clone https://github.com/Firehawk52/ultimate-animation-index.git
+cd ultimate-animation-index
 npm start
 ```
 
@@ -199,7 +199,7 @@ tests the catalog without adding the generated file to Git.
 - Adult section with Ecchi, Erotic, Hentai, Gore, Extreme Violence and Disturbing filters
 - Plain-language content levels for Sexual content, Nudity, Violence, Gore and Disturbing content
 - Personal watch status, ratings and private notes
-- S+ or 10-point rating display, saved as a local interface preference
+- S–D or 10-point rating display, saved as a local interface preference
 - Per-episode Unwatched, Watching and Watched progress grouped by connected seasons
 - Recommended / Not recommended marks
 - Signed UserList sharing by text code
@@ -217,10 +217,10 @@ two-step confirmation; its associated local progress, opinion, favorite and cach
 
 ### Rating formats
 
-Choose **S+ scale** or **10 scale** from the master toolbar or from any title's personal-rating editor. The
+Choose **Letter scale** or **10 scale** from the master toolbar or from any title's personal-rating editor. The
 preference changes both editorial quality labels and the personal rating control, and is restored after refresh.
 
-The equivalent values are `B = 5`, `B+ = 6`, `A = 7`, `A+ = 8`, `S = 9` and `S+ = 10`. Personal ratings remain
+The equivalent values are `D = 5`, `C = 6`, `B = 7`, `A = 8`, `A+ = 9` and `S = 10`. Personal ratings remain
 numeric internally, so switching formats does not alter existing ratings and sorting, backup and import remain
 compatible between formats.
 
@@ -383,7 +383,7 @@ public/catalog.json
 The generated JSON is formatted with indentation and line breaks for local inspection.
 It is ignored by Git and should not be edited or committed. Edit the source file
 instead. If `public/catalog.json` is missing or outdated, `npm start` creates it
-automatically using Node.js; Python is not required.
+automatically with the included Node.js build script.
 
 ## Contributing and security
 

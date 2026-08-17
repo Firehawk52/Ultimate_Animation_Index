@@ -1,14 +1,14 @@
 {
   "name": "ultimate-animation-index",
-  "version": "2.0.9",
+  "version": "2.0.10",
   "description": "A self-hosted, ranked watchlist for anime and animation from around the world.",
-  "homepage": "https://github.com/Firehawk52/Ultimate_Animation_Index#readme",
+  "homepage": "https://github.com/Firehawk52/ultimate-animation-index#readme",
   "repository": {
     "type": "git",
-    "url": "https://github.com/Firehawk52/Ultimate_Animation_Index.git"
+    "url": "https://github.com/Firehawk52/ultimate-animation-index.git"
   },
   "bugs": {
-    "url": "https://github.com/Firehawk52/Ultimate_Animation_Index/issues"
+    "url": "https://github.com/Firehawk52/ultimate-animation-index/issues"
   },
   "private": true,
   "type": "module",

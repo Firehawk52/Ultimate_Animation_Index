@@ -2,6 +2,15 @@
 
 All notable changes to Ultimate Animation Index are documented here.
 
+## [2.0.10] - 2026-08-18
+
+### Sorting and ratings
+
+- Split main-list and collection sorting into separate **Sort by** and ascending/descending controls.
+- Saved both sort directions across refreshes and private backup/import.
+- Changed the letter scale to `S`, `A+`, `A`, `B`, `C` and `D`, with `S` as the highest rating.
+- Removed the obsolete Python reference from the README.
+
 ## [2.0.9] - 2026-08-17
 
 ### One-command updates
@@ -126,4 +135,4 @@ All notable changes to Ultimate Animation Index are documented here.
 - Kept generated catalogs, downloaded covers, caches, personal data and all video files out of Git.
 - Added automated formatting, syntax, catalog and server tests through GitHub Actions.
 
-[2.0.0]: https://github.com/Firehawk52/Ultimate_Animation_Index/releases/tag/v2.0.0
+[2.0.0]: https://github.com/Firehawk52/ultimate-animation-index/releases/tag/v2.0.0

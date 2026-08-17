@@ -8,7 +8,7 @@ import {
 
 (async () => {
   'use strict';
-  const APP_VERSION = '2.0.9';
+  const APP_VERSION = '2.0.10';
   const catalogResponse = await fetch('catalog.json');
   if (!catalogResponse.ok) throw new Error(`Could not load catalog (${catalogResponse.status})`);
   const CAT = await catalogResponse.json();
@@ -45,12 +45,18 @@ import {
   const savedUI = load(STORE.ui, {});
   const adultModes = ['all', 'ecchi', 'erotic', 'hentai', 'gore', 'violence', 'disturbing'];
   const collectionSortModes = ['rating', 'release', 'name'];
+  const collectionSortOrders = ['asc', 'desc'];
+  const masterSortOrders = ['asc', 'desc'];
   const state = {
     visible: PAGE_SIZE,
     compact: load(STORE.compact, false),
     tab: 'master',
     adult: adultModes.includes(savedUI.adult) ? savedUI.adult : 'all',
     collectionSort: collectionSortModes.includes(savedUI.collectionSort) ? savedUI.collectionSort : 'rating',
+    collectionSortOrder: collectionSortOrders.includes(savedUI.collectionSortOrder)
+      ? savedUI.collectionSortOrder
+      : 'desc',
+    masterSortOrder: masterSortOrders.includes(savedUI.masterSortOrder) ? savedUI.masterSortOrder : 'desc',
     ratingFormat: normalizeRatingFormat(savedUI.ratingFormat),
     server: false,
     signerCompatible: false,
@@ -252,6 +258,7 @@ import {
       if (typeof savedUI[id] === 'boolean') $('#' + id).checked = savedUI[id];
     }
     $('#ratingFormatSelect').value = state.ratingFormat;
+    renderSortOrderButton($('#masterSortOrder'), state.masterSortOrder);
     $$('.adult-chip').forEach((button) =>
       button.classList.toggle('active', button.dataset.adult === state.adult),
     );
@@ -261,6 +268,8 @@ import {
     const next = {
       adult: state.adult,
       collectionSort: state.collectionSort,
+      collectionSortOrder: state.collectionSortOrder,
+      masterSortOrder: state.masterSortOrder,
       ratingFormat: state.ratingFormat,
     };
     for (const id of UI_VALUE_FIELDS) next[id] = $('#' + id).value;
@@ -298,21 +307,28 @@ import {
     });
     const sort = $('#sortSelect').value;
     const score = (x, k) => x.scores?.[k] ?? x[k] ?? 0;
+    const direction = state.masterSortOrder === 'asc' ? 1 : -1;
+    const rank = (item) => item.rank ?? 999999;
+    const compareKnownNumbers = (a, b, value) => {
+      const aValue = Number(value(a)) || 0;
+      const bValue = Number(value(b)) || 0;
+      if (Boolean(aValue) !== Boolean(bValue)) return aValue ? -1 : 1;
+      return (aValue - bValue) * direction;
+    };
     if (sort === 'rank')
-      out.sort((a, b) => (a.rank ?? 999999) - (b.rank ?? 999999) || a.title.localeCompare(b.title));
+      out.sort((a, b) => {
+        const aRanked = Number.isFinite(a.rank);
+        const bRanked = Number.isFinite(b.rank);
+        if (aRanked !== bRanked) return aRanked ? -1 : 1;
+        return (rank(b) - rank(a)) * direction || a.title.localeCompare(b.title);
+      });
     else if (['overall', 'production', 'story', 'emotional'].includes(sort))
-      out.sort((a, b) => score(b, sort) - score(a, sort) || (a.rank ?? 999999) - (b.rank ?? 999999));
-    else if (sort === 'year')
-      out.sort(
-        (a, b) =>
-          (Number(liveYear(b)) || 0) - (Number(liveYear(a)) || 0) || (a.rank ?? 999999) - (b.rank ?? 999999),
-      );
-    else if (sort === 'title') out.sort((a, b) => a.title.localeCompare(b.title));
+      out.sort((a, b) => compareKnownNumbers(a, b, (item) => score(item, sort)) || rank(a) - rank(b));
+    else if (sort === 'year') out.sort((a, b) => compareKnownNumbers(a, b, liveYear) || rank(a) - rank(b));
+    else if (sort === 'title')
+      out.sort((a, b) => a.title.localeCompare(b.title) * direction || rank(a) - rank(b));
     else if (sort === 'myrating')
-      out.sort(
-        (a, b) =>
-          (pFor(b.id).rating || 0) - (pFor(a.id).rating || 0) || (a.rank ?? 999999) - (b.rank ?? 999999),
-      );
+      out.sort((a, b) => compareKnownNumbers(a, b, (item) => pFor(item.id).rating || 0) || rank(a) - rank(b));
     return out;
   }
 
@@ -534,17 +550,37 @@ import {
     if (!c) return;
     const arr = c.items.map(itemById).filter(Boolean);
     const rank = (item) => item.rank ?? 999999;
+    const direction = state.collectionSortOrder === 'asc' ? 1 : -1;
+    const compareKnownNumbers = (a, b, value) => {
+      const aKnown = Boolean(value(a));
+      const bKnown = Boolean(value(b));
+      if (aKnown !== bKnown) return aKnown ? -1 : 1;
+      return (value(a) - value(b)) * direction;
+    };
     if (state.collectionSort === 'release')
-      arr.sort((a, b) => (b.year || 0) - (a.year || 0) || rank(a) - rank(b));
+      arr.sort((a, b) => compareKnownNumbers(a, b, (item) => item.year || 0) || rank(a) - rank(b));
     else if (state.collectionSort === 'name')
-      arr.sort((a, b) => a.title.localeCompare(b.title) || rank(a) - rank(b));
-    else arr.sort((a, b) => rank(a) - rank(b) || a.title.localeCompare(b.title));
+      arr.sort((a, b) => a.title.localeCompare(b.title) * direction || rank(a) - rank(b));
+    else
+      arr.sort((a, b) => {
+        const aRanked = Number.isFinite(a.rank);
+        const bRanked = Number.isFinite(b.rank);
+        if (aRanked !== bRanked) return aRanked ? -1 : 1;
+        return (rank(b) - rank(a)) * direction || a.title.localeCompare(b.title);
+      });
+    const descending = state.collectionSortOrder === 'desc';
+    const orderIcon = sortOrderIconHTML(descending);
     $('#collectionBody').innerHTML =
-      `<div class="collection-detail"><div class="meta">${esc(c.kind.toUpperCase())} // ${esc(c.mode.toUpperCase())} // ${arr.length} TITLES</div><h2>${esc(c.name)}</h2><p>${esc(c.description)}</p><div class="collection-title-tools"><label><span>SORT TITLES</span><select id="collectionTitleSort" aria-label="Sort collection titles"><option value="rating" ${state.collectionSort === 'rating' ? 'selected' : ''}>RATING // HIGHEST FIRST</option><option value="release" ${state.collectionSort === 'release' ? 'selected' : ''}>RELEASE // NEWEST FIRST</option><option value="name" ${state.collectionSort === 'name' ? 'selected' : ''}>NAME // A–Z</option></select></label></div><div class="collection-title-list">${arr.map((x) => `<button class="collection-title" data-id="${esc(x.id)}"><b>${x.rank ? `#${String(x.rank).padStart(3, '0')}` : 'ADD'}</b><span>${esc(x.title)}${x.year ? ` <small>(${x.year})</small>` : ''}</span><em>${esc(qualityRatingLabel(x.tier, state.ratingFormat, { suffix: state.ratingFormat === 'ten' }))}</em></button>`).join('')}</div></div>`;
+      `<div class="collection-detail"><div class="meta">${esc(c.kind.toUpperCase())} // ${esc(c.mode.toUpperCase())} // ${arr.length} TITLES</div><h2>${esc(c.name)}</h2><p>${esc(c.description)}</p><div class="collection-title-tools"><label><span>SORT BY</span><select id="collectionTitleSort" aria-label="Sort collection titles by"><option value="rating" ${state.collectionSort === 'rating' ? 'selected' : ''}>RATING</option><option value="release" ${state.collectionSort === 'release' ? 'selected' : ''}>RELEASE DATE</option><option value="name" ${state.collectionSort === 'name' ? 'selected' : ''}>NAME</option></select></label><div class="collection-sort-order"><span>ORDER</span><button id="collectionSortOrder" type="button" aria-label="Change to ${descending ? 'ascending' : 'descending'} order" title="Change to ${descending ? 'ascending' : 'descending'} order">${orderIcon}<b>${descending ? 'DESC' : 'ASC'}</b></button></div></div><div class="collection-title-list">${arr.map((x) => `<button class="collection-title" data-id="${esc(x.id)}"><b>${x.rank ? `#${String(x.rank).padStart(3, '0')}` : 'ADD'}</b><span>${esc(x.title)}${x.year ? ` <small>(${x.year})</small>` : ''}</span><em>${esc(qualityRatingLabel(x.tier, state.ratingFormat, { suffix: state.ratingFormat === 'ten' }))}</em></button>`).join('')}</div></div>`;
     const dialog = $('#collectionDialog');
     if (!dialog.open) dialog.showModal();
     $('#collectionTitleSort').addEventListener('change', (event) => {
       state.collectionSort = event.target.value;
+      saveUIState();
+      openCollection(id);
+    });
+    $('#collectionSortOrder').addEventListener('click', () => {
+      state.collectionSortOrder = state.collectionSortOrder === 'desc' ? 'asc' : 'desc';
       saveUIState();
       openCollection(id);
     });
@@ -553,6 +589,19 @@ import {
         openDetail(b.dataset.id);
       }),
     );
+  }
+
+  function sortOrderIconHTML(descending) {
+    return descending
+      ? '<svg viewBox="0 0 20 20" aria-hidden="true"><path d="M3 5h9M3 9h7M3 13h5M15 4v12m-3-3 3 3 3-3"/></svg>'
+      : '<svg viewBox="0 0 20 20" aria-hidden="true"><path d="M3 15h9M3 11h7M3 7h5M15 16V4m-3 3 3-3 3 3"/></svg>';
+  }
+
+  function renderSortOrderButton(button, order) {
+    const descending = order === 'desc';
+    button.innerHTML = `${sortOrderIconHTML(descending)}<b>${descending ? 'DESC' : 'ASC'}</b>`;
+    button.setAttribute('aria-label', `Change to ${descending ? 'ascending' : 'descending'} order`);
+    button.title = `Change to ${descending ? 'ascending' : 'descending'} order`;
   }
 
   // One sparse episode state is shared by title details and franchise guides.
@@ -879,7 +928,7 @@ import {
       if (
         releaseUrl.protocol !== 'https:' ||
         releaseUrl.hostname !== 'github.com' ||
-        !releaseUrl.pathname.startsWith('/Firehawk52/Ultimate_Animation_Index/releases/tag/')
+        !releaseUrl.pathname.startsWith('/Firehawk52/ultimate-animation-index/releases/tag/')
       )
         return;
       availableUpdate = release.latest;
@@ -1736,7 +1785,7 @@ import {
   function ratingScaleHelp(format = state.ratingFormat) {
     return format === 'ten'
       ? 'Rate from 0 to 10 in half-point steps. Zero leaves the title unrated.'
-      : 'B = 5 // B+ = 6 // A = 7 // A+ = 8 // S = 9 // S+ = 10';
+      : 'D = 5 // C = 6 // B = 7 // A = 8 // A+ = 9 // S = 10';
   }
 
   function openDetail(id) {
@@ -1761,7 +1810,7 @@ import {
       sc.overall ? `Overall ${sc.overall}` : '',
     ].filter(Boolean);
     $('#dialogBody').innerHTML =
-      `<div class="detail-hero">${bg ? `<img class="detail-bg" src="${esc(bg)}" alt="">` : ''}<div class="detail-heading"><div class="kicker">${x.rank ? `MASTER RANK #${String(x.rank).padStart(3, '0')}` : 'CUSTOM ADDITION'} // <span data-quality-rating>${esc(quality)}</span></div><h2>${esc(x.title)}</h2></div></div><div class="detail-content"><div class="detail-facts">${facts.map((f, index) => `<span class="fact" ${index === 1 ? 'data-quality-rating' : ''}>${esc(f)}</span>`).join('')}</div><div class="detail-grid"><div>${m.description ? `<h4>Synopsis</h4><p>${esc(m.description)}</p>` : '<p class="metadata-wait">Synopsis will appear when metadata is available.</p>'}${x.watch_note ? `<div class="callout"><h4>Watch note</h4><p>${esc(x.watch_note)}</p></div>` : ''}${x.caveat ? `<div class="callout"><h4>Worth knowing</h4><p>${esc(x.caveat)}</p></div>` : ''}${m.siteUrl ? `<a class="external-link" href="${esc(m.siteUrl)}" target="_blank" rel="noopener">OPEN SOURCE ↗</a>` : ''}<h4>Content</h4>${contentGuide(x, false)}${canTrackEpisodes(x) ? `<div id="episodeTrackerMount" class="episode-tracker-mount" data-episode-owner="${esc(x.id)}" data-episode-variant="detail"></div>` : ''}${x.custom ? customEditorHTML(x) : ''}${ops.length ? `<h4>Imported opinions</h4><div class="source-opinion-list">${ops.map((o) => `<div class="source-opinion"><b>${esc(o.label)}</b><span class="${o.verdict === 'recommend' ? 'yes' : 'no'}">${o.verdict === 'recommend' ? 'RECOMMENDED' : 'NOT RECOMMENDED'}</span></div>`).join('')}</div>` : ''}</div><aside><div class="user-edit"><button id="modalFavorite" class="favorite-detail ${isFavorite(id) ? 'active' : ''}" type="button">${isFavorite(id) ? '♥ FAVORITE' : '♡ ADD TO FAVORITES'}</button><label>MY RECOMMENDATION</label><div class="verdict-row"><button class="verdict-btn rec ${verdict === 'recommend' ? 'active' : ''}" data-v="recommend">RECOMMEND</button><button class="verdict-btn no ${verdict === 'avoid' ? 'active' : ''}" data-v="avoid">DON'T RECOMMEND</button><button class="verdict-btn neutral ${!verdict ? 'active' : ''}" data-v="">NEUTRAL</button></div><label>WATCH STATUS</label><select id="modalStatus">${['Not started', 'Watching', 'Completed', 'On hold', 'Dropped'].map((s) => `<option ${p.status === s ? 'selected' : ''}>${s}</option>`).join('')}</select><div class="rating-format-head"><span>MY RATING</span><div class="rating-format-toggle" role="group" aria-label="Personal rating format"><button type="button" data-rating-format="ten">10 SCALE</button><button type="button" data-rating-format="tier">S+ SCALE</button></div></div><div id="modalRatingEditor">${ratingEditorHTML(p.rating)}</div><small class="rating-scale-help" id="ratingScaleHelp">${esc(ratingScaleHelp())}</small><label>PRIVATE NOTE</label><textarea id="modalNote" maxlength="2000">${esc(p.note || '')}</textarea><button class="slash-button hot wide" id="saveDetail">${x.custom ? 'SAVE TITLE + LOCAL DATA' : 'SAVE LOCAL DATA'}</button>${x.custom ? '<button class="danger-button wide" id="removeCustomTitle" type="button">REMOVE CUSTOM TITLE</button>' : ''}</div></aside></div></div>`;
+      `<div class="detail-hero">${bg ? `<img class="detail-bg" src="${esc(bg)}" alt="">` : ''}<div class="detail-heading"><div class="kicker">${x.rank ? `MASTER RANK #${String(x.rank).padStart(3, '0')}` : 'CUSTOM ADDITION'} // <span data-quality-rating>${esc(quality)}</span></div><h2>${esc(x.title)}</h2></div></div><div class="detail-content"><div class="detail-facts">${facts.map((f, index) => `<span class="fact" ${index === 1 ? 'data-quality-rating' : ''}>${esc(f)}</span>`).join('')}</div><div class="detail-grid"><div>${m.description ? `<h4>Synopsis</h4><p>${esc(m.description)}</p>` : '<p class="metadata-wait">Synopsis will appear when metadata is available.</p>'}${x.watch_note ? `<div class="callout"><h4>Watch note</h4><p>${esc(x.watch_note)}</p></div>` : ''}${x.caveat ? `<div class="callout"><h4>Worth knowing</h4><p>${esc(x.caveat)}</p></div>` : ''}${m.siteUrl ? `<a class="external-link" href="${esc(m.siteUrl)}" target="_blank" rel="noopener">OPEN SOURCE ↗</a>` : ''}<h4>Content</h4>${contentGuide(x, false)}${canTrackEpisodes(x) ? `<div id="episodeTrackerMount" class="episode-tracker-mount" data-episode-owner="${esc(x.id)}" data-episode-variant="detail"></div>` : ''}${x.custom ? customEditorHTML(x) : ''}${ops.length ? `<h4>Imported opinions</h4><div class="source-opinion-list">${ops.map((o) => `<div class="source-opinion"><b>${esc(o.label)}</b><span class="${o.verdict === 'recommend' ? 'yes' : 'no'}">${o.verdict === 'recommend' ? 'RECOMMENDED' : 'NOT RECOMMENDED'}</span></div>`).join('')}</div>` : ''}</div><aside><div class="user-edit"><button id="modalFavorite" class="favorite-detail ${isFavorite(id) ? 'active' : ''}" type="button">${isFavorite(id) ? '♥ FAVORITE' : '♡ ADD TO FAVORITES'}</button><label>MY RECOMMENDATION</label><div class="verdict-row"><button class="verdict-btn rec ${verdict === 'recommend' ? 'active' : ''}" data-v="recommend">RECOMMEND</button><button class="verdict-btn no ${verdict === 'avoid' ? 'active' : ''}" data-v="avoid">DON'T RECOMMEND</button><button class="verdict-btn neutral ${!verdict ? 'active' : ''}" data-v="">NEUTRAL</button></div><label>WATCH STATUS</label><select id="modalStatus">${['Not started', 'Watching', 'Completed', 'On hold', 'Dropped'].map((s) => `<option ${p.status === s ? 'selected' : ''}>${s}</option>`).join('')}</select><div class="rating-format-head"><span>MY RATING</span><div class="rating-format-toggle" role="group" aria-label="Personal rating format"><button type="button" data-rating-format="ten">10 SCALE</button><button type="button" data-rating-format="tier">LETTER SCALE</button></div></div><div id="modalRatingEditor">${ratingEditorHTML(p.rating)}</div><small class="rating-scale-help" id="ratingScaleHelp">${esc(ratingScaleHelp())}</small><label>PRIVATE NOTE</label><textarea id="modalNote" maxlength="2000">${esc(p.note || '')}</textarea><button class="slash-button hot wide" id="saveDetail">${x.custom ? 'SAVE TITLE + LOCAL DATA' : 'SAVE LOCAL DATA'}</button>${x.custom ? '<button class="danger-button wide" id="removeCustomTitle" type="button">REMOVE CUSTOM TITLE</button>' : ''}</div></aside></div></div>`;
     $('#dialogBody').dataset.itemId = id;
     $('#modalFavorite').onclick = () => {
       toggleFavorite(id);
@@ -2081,6 +2130,13 @@ import {
     renderMaster();
     renderFavorites();
     renderAdult();
+  });
+  $('#masterSortOrder').addEventListener('click', () => {
+    state.masterSortOrder = state.masterSortOrder === 'desc' ? 'asc' : 'desc';
+    renderSortOrderButton($('#masterSortOrder'), state.masterSortOrder);
+    state.visible = PAGE_SIZE;
+    saveUIState();
+    renderMaster();
   });
   $('#loadMoreBtn').addEventListener('click', () => {
     state.visible += PAGE_SIZE;
