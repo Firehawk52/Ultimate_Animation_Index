@@ -185,6 +185,10 @@ function validateUI(value) {
   for (const key of strings) {
     if (typeof source[key] === 'string') result[key] = uiText(source[key], 500, `ui-${key}`);
   }
+  if (source.ratingFormat !== undefined) {
+    if (!['tier', 'ten'].includes(source.ratingFormat)) throw new Error('invalid-rating-format');
+    result.ratingFormat = source.ratingFormat;
+  }
   for (const key of ['hideCompleted', 'customOnly']) {
     if (typeof source[key] === 'boolean') result[key] = source[key];
   }
@@ -213,7 +217,7 @@ export function validateUserBackup(input) {
   };
 }
 
-export function createUserBackup(data, { createdAt = new Date().toISOString(), appVersion = '2.0.1' } = {}) {
+export function createUserBackup(data, { createdAt = new Date().toISOString(), appVersion = '2.0.2' } = {}) {
   return validateUserBackup({ format: FORMAT, version: VERSION, createdAt, appVersion, data });
 }
 

@@ -18,6 +18,7 @@ See the [changelog](CHANGELOG.md) for release history and version 2.0 details.
 
 - **One worldwide catalog:** anime, films, OVAs, donghua and animation beyond Japan
 - **Local personal data:** progress, ratings, notes and favorites stay in your browser
+- **Selectable rating format:** use either the S+ letter scale or a 10-point scale throughout the interface
 - **Cover-level progress:** distinct status icons show not started, watching, completed,
   on hold and dropped titles without opening their details
 - **Unified episode tracking:** AniList sequels and prequels are grouped into seasons under one series,
@@ -199,6 +200,7 @@ tests the catalog without adding the generated file to Git.
 - Adult section with Ecchi, Erotic, Hentai, Gore, Extreme Violence and Disturbing filters
 - Plain-language content levels for Sexual content, Nudity, Violence, Gore and Disturbing content
 - Personal watch status, ratings and private notes
+- S+ or 10-point rating display, saved as a local interface preference
 - Per-episode Unwatched, Watching and Watched progress grouped by connected seasons
 - Recommended / Not recommended marks
 - Signed UserList sharing by text code
@@ -213,6 +215,15 @@ silently replaced by a provider result. When available, provider tags, genres an
 converted into editable 0–5 content-rating estimates. These estimates are deliberately conservative and should
 be reviewed by the user before sharing a UserList. A custom title can be removed from its detail dialog with a
 two-step confirmation; its associated local progress, opinion, favorite and cached metadata are removed with it.
+
+### Rating formats
+
+Choose **S+ scale** or **10 scale** from the master toolbar or from any title's personal-rating editor. The
+preference changes both editorial quality labels and the personal rating control, and is restored after refresh.
+
+The equivalent values are `B = 5`, `B+ = 6`, `A = 7`, `A+ = 8`, `S = 9` and `S+ = 10`. Personal ratings remain
+numeric internally, so switching formats does not alter existing ratings and sorting, backup and import remain
+compatible between formats.
 
 When a cover is found, the server downloads it once and stores it locally in:
 

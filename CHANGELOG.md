@@ -2,6 +2,15 @@
 
 All notable changes to Ultimate Animation Index are documented here.
 
+## [2.0.2] - 2026-08-17
+
+### Selectable rating formats
+
+- Added a global choice between the S+ letter scale and the 10-point scale.
+- Applied the preference to catalog quality labels, filters, collections and personal rating controls.
+- Preserved numeric personal ratings internally so format changes do not affect sorting, backup or import.
+- Saved the selected format across refreshes and included it in private user backups.
+
 ## [2.0.1] - 2026-08-17
 
 ### Private backup and restore

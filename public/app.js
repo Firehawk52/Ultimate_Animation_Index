@@ -1,8 +1,14 @@
 import { combineUserData, createUserBackup, summarizeUserData, validateUserBackup } from './user-backup.js';
+import {
+  normalizeRatingFormat,
+  personalRatingTier,
+  personalTierOptions,
+  qualityRatingLabel,
+} from './rating-format.js';
 
 (async () => {
   'use strict';
-  const APP_VERSION = '2.0.1';
+  const APP_VERSION = '2.0.2';
   const catalogResponse = await fetch('catalog.json');
   if (!catalogResponse.ok) throw new Error(`Could not load catalog (${catalogResponse.status})`);
   const CAT = await catalogResponse.json();
@@ -42,6 +48,7 @@ import { combineUserData, createUserBackup, summarizeUserData, validateUserBacku
     compact: load(STORE.compact, false),
     tab: 'master',
     adult: adultModes.includes(savedUI.adult) ? savedUI.adult : 'all',
+    ratingFormat: normalizeRatingFormat(savedUI.ratingFormat),
     server: false,
     signerCompatible: false,
     keyId: '',
@@ -174,6 +181,7 @@ import { combineUserData, createUserBackup, summarizeUserData, validateUserBacku
           ['S+', 'S', 'A+', 'A', 'B+', 'B', 'CUSTOM'].indexOf(a) -
           ['S+', 'S', 'A+', 'A', 'B+', 'B', 'CUSTOM'].indexOf(b),
       ),
+      (tier) => qualityRatingLabel(tier, state.ratingFormat, { suffix: state.ratingFormat === 'ten' }),
     );
     fill($('#typeFilter'), [...new Set(items.map(displayType).filter(Boolean))].sort());
     fill(
@@ -183,16 +191,18 @@ import { combineUserData, createUserBackup, summarizeUserData, validateUserBacku
       ].sort(),
     );
   }
-  function fill(sel, vals) {
+  function fill(sel, vals, label = (value) => value) {
+    const selected = sel.value;
     const first = sel.options[0];
     sel.innerHTML = '';
     sel.append(first);
     for (const v of vals) {
       const o = document.createElement('option');
       o.value = v;
-      o.textContent = v.toUpperCase();
+      o.textContent = label(v).toUpperCase();
       sel.append(o);
     }
+    if ([...sel.options].some((option) => option.value === selected)) sel.value = selected;
   }
 
   const UI_VALUE_FIELDS = [
@@ -223,13 +233,14 @@ import { combineUserData, createUserBackup, summarizeUserData, validateUserBacku
     for (const id of UI_CHECKBOX_FIELDS) {
       if (typeof savedUI[id] === 'boolean') $('#' + id).checked = savedUI[id];
     }
+    $('#ratingFormatSelect').value = state.ratingFormat;
     $$('.adult-chip').forEach((button) =>
       button.classList.toggle('active', button.dataset.adult === state.adult),
     );
   }
 
   function saveUIState() {
-    const next = { adult: state.adult };
+    const next = { adult: state.adult, ratingFormat: state.ratingFormat };
     for (const id of UI_VALUE_FIELDS) next[id] = $('#' + id).value;
     for (const id of UI_CHECKBOX_FIELDS) next[id] = $('#' + id).checked;
     save(STORE.ui, next);
@@ -330,7 +341,7 @@ import { combineUserData, createUserBackup, summarizeUserData, validateUserBacku
     const fav = isFavorite(x.id);
     const content = adult ? contentGuide(x, true) : '';
     return `<article class="title-card" data-id="${esc(x.id)}" tabindex="0">
-      <div class="cover">${cover ? `<img loading="lazy" src="${esc(cover)}" alt="${esc(x.title)} cover">` : `<div class="cover-placeholder">${esc(initials(x.title))}</div>`}<span class="rank">${rank}</span><span class="tier">${esc(x.tier || 'CUSTOM')}</span><button class="favorite-toggle ${fav ? 'active' : ''}" data-fav-id="${esc(x.id)}" type="button" aria-label="${fav ? 'Remove from favorites' : 'Add to favorites'}" title="${fav ? 'Remove from favorites' : 'Add to favorites'}">${fav ? '♥' : '♡'}</button>${statusMarkHTML(p.status)}${verdictBadge}</div>
+      <div class="cover">${cover ? `<img loading="lazy" src="${esc(cover)}" alt="${esc(x.title)} cover">` : `<div class="cover-placeholder">${esc(initials(x.title))}</div>`}<span class="rank">${rank}</span><span class="tier">${esc(qualityRatingLabel(x.tier, state.ratingFormat))}</span><button class="favorite-toggle ${fav ? 'active' : ''}" data-fav-id="${esc(x.id)}" type="button" aria-label="${fav ? 'Remove from favorites' : 'Add to favorites'}" title="${fav ? 'Remove from favorites' : 'Add to favorites'}">${fav ? '♥' : '♡'}</button>${statusMarkHTML(p.status)}${verdictBadge}</div>
       <div class="card-body"><div class="card-meta">${esc(displayType(x).toUpperCase())} // ${esc(liveYear(x))} // ${esc((m.studio || x.origin || '').toUpperCase())}</div><h3>${esc(x.title)}</h3>
       <div class="tag-row">${tags.map((g) => `<span class="tag">${esc(g)}</span>`).join('')}</div>${sourceBadgesHTML(x.id)}${content}
       <div class="score-line"><div class="score-bit"><b>${sc.overall || '—'}</b><span>OVERALL</span></div><div class="score-bit"><b>${sc.production || '—'}</b><span>PROD</span></div><div class="score-bit"><b>${sc.story || '—'}</b><span>STORY</span></div><div class="score-bit"><b>${sc.emotional || '—'}</b><span>EMOTION</span></div></div></div></article>`;
@@ -503,7 +514,7 @@ import { combineUserData, createUserBackup, summarizeUserData, validateUserBacku
     if (c.id === 'studio-ghibli') arr.sort((a, b) => (a.year || 9999) - (b.year || 9999));
     else arr.sort((a, b) => (a.rank ?? 999999) - (b.rank ?? 999999));
     $('#collectionBody').innerHTML =
-      `<div class="collection-detail"><div class="meta">${esc(c.kind.toUpperCase())} // ${esc(c.mode.toUpperCase())} // ${arr.length} TITLES</div><h2>${esc(c.name)}</h2><p>${esc(c.description)}</p><div class="collection-title-list">${arr.map((x) => `<button class="collection-title" data-id="${esc(x.id)}"><b>${x.rank ? `#${String(x.rank).padStart(3, '0')}` : 'ADD'}</b><span>${esc(x.title)}${x.year ? ` <small>(${x.year})</small>` : ''}</span><em>${esc(x.tier || '')}</em></button>`).join('')}</div></div>`;
+      `<div class="collection-detail"><div class="meta">${esc(c.kind.toUpperCase())} // ${esc(c.mode.toUpperCase())} // ${arr.length} TITLES</div><h2>${esc(c.name)}</h2><p>${esc(c.description)}</p><div class="collection-title-list">${arr.map((x) => `<button class="collection-title" data-id="${esc(x.id)}"><b>${x.rank ? `#${String(x.rank).padStart(3, '0')}` : 'ADD'}</b><span>${esc(x.title)}${x.year ? ` <small>(${x.year})</small>` : ''}</span><em>${esc(qualityRatingLabel(x.tier, state.ratingFormat, { suffix: state.ratingFormat === 'ten' }))}</em></button>`).join('')}</div></div>`;
     $('#collectionDialog').showModal();
     $$('.collection-title', $('#collectionBody')).forEach((b) =>
       b.addEventListener('click', () => {
@@ -1605,6 +1616,25 @@ import { combineUserData, createUserBackup, summarizeUserData, validateUserBacku
   }
 
   // Detail dialog and personal progress
+  function ratingEditorHTML(value, format = state.ratingFormat) {
+    const rating = Number(value) || 0;
+    if (format === 'ten')
+      return `<input id="modalRating" type="number" min="0" max="10" step="0.5" value="${rating || ''}" placeholder="Unrated" aria-label="Personal rating out of 10">`;
+    const selectedTier = personalRatingTier(rating);
+    return `<select id="modalRating" aria-label="Personal rating tier"><option value="">UNRATED</option>${personalTierOptions()
+      .map(
+        ({ tier, value: tierValue }) =>
+          `<option value="${tierValue}" ${selectedTier === tier ? 'selected' : ''}>${tier}</option>`,
+      )
+      .join('')}</select>`;
+  }
+
+  function ratingScaleHelp(format = state.ratingFormat) {
+    return format === 'ten'
+      ? 'Rate from 0 to 10 in half-point steps. Zero leaves the title unrated.'
+      : 'B = 5 // B+ = 6 // A = 7 // A+ = 8 // S = 9 // S+ = 10';
+  }
+
   function openDetail(id) {
     const x = itemById(id);
     if (!x) return;
@@ -1614,9 +1644,12 @@ import { combineUserData, createUserBackup, summarizeUserData, validateUserBacku
       ops = sourceOpinions(id),
       bg = m.banner || m.cover || m.image || '';
     const sc = x.scores || {};
+    const quality = qualityRatingLabel(x.tier, state.ratingFormat, {
+      suffix: state.ratingFormat === 'ten',
+    });
     const facts = [
       x.rank ? `#${x.rank}` : 'CUSTOM',
-      x.tier,
+      quality,
       displayType(x),
       liveYear(x),
       x.origin,
@@ -1624,7 +1657,7 @@ import { combineUserData, createUserBackup, summarizeUserData, validateUserBacku
       sc.overall ? `Overall ${sc.overall}` : '',
     ].filter(Boolean);
     $('#dialogBody').innerHTML =
-      `<div class="detail-hero">${bg ? `<img class="detail-bg" src="${esc(bg)}" alt="">` : ''}<div class="detail-heading"><div class="kicker">${x.rank ? `MASTER RANK #${String(x.rank).padStart(3, '0')}` : 'CUSTOM ADDITION'} // ${esc(x.tier || '')}</div><h2>${esc(x.title)}</h2></div></div><div class="detail-content"><div class="detail-facts">${facts.map((f) => `<span class="fact">${esc(f)}</span>`).join('')}</div><div class="detail-grid"><div>${m.description ? `<h4>Synopsis</h4><p>${esc(m.description)}</p>` : '<p class="metadata-wait">Synopsis will appear when metadata is available.</p>'}${x.watch_note ? `<div class="callout"><h4>Watch note</h4><p>${esc(x.watch_note)}</p></div>` : ''}${x.caveat ? `<div class="callout"><h4>Worth knowing</h4><p>${esc(x.caveat)}</p></div>` : ''}${m.siteUrl ? `<a class="external-link" href="${esc(m.siteUrl)}" target="_blank" rel="noopener">OPEN SOURCE ↗</a>` : ''}<h4>Content</h4>${contentGuide(x, false)}${canTrackEpisodes(x) ? `<div id="episodeTrackerMount" class="episode-tracker-mount" data-episode-owner="${esc(x.id)}" data-episode-variant="detail"></div>` : ''}${x.custom ? customEditorHTML(x) : ''}${ops.length ? `<h4>Imported opinions</h4><div class="source-opinion-list">${ops.map((o) => `<div class="source-opinion"><b>${esc(o.label)}</b><span class="${o.verdict === 'recommend' ? 'yes' : 'no'}">${o.verdict === 'recommend' ? 'RECOMMENDED' : 'NOT RECOMMENDED'}</span></div>`).join('')}</div>` : ''}</div><aside><div class="user-edit"><button id="modalFavorite" class="favorite-detail ${isFavorite(id) ? 'active' : ''}" type="button">${isFavorite(id) ? '♥ FAVORITE' : '♡ ADD TO FAVORITES'}</button><label>MY RECOMMENDATION</label><div class="verdict-row"><button class="verdict-btn rec ${verdict === 'recommend' ? 'active' : ''}" data-v="recommend">RECOMMEND</button><button class="verdict-btn no ${verdict === 'avoid' ? 'active' : ''}" data-v="avoid">DON'T RECOMMEND</button><button class="verdict-btn neutral ${!verdict ? 'active' : ''}" data-v="">NEUTRAL</button></div><label>WATCH STATUS</label><select id="modalStatus">${['Not started', 'Watching', 'Completed', 'On hold', 'Dropped'].map((s) => `<option ${p.status === s ? 'selected' : ''}>${s}</option>`).join('')}</select><label>MY RATING /10</label><input id="modalRating" type="number" min="0" max="10" step="0.5" value="${p.rating || ''}" placeholder="Unrated"><label>PRIVATE NOTE</label><textarea id="modalNote" maxlength="2000">${esc(p.note || '')}</textarea><button class="slash-button hot wide" id="saveDetail">${x.custom ? 'SAVE TITLE + LOCAL DATA' : 'SAVE LOCAL DATA'}</button>${x.custom ? '<button class="danger-button wide" id="removeCustomTitle" type="button">REMOVE CUSTOM TITLE</button>' : ''}</div></aside></div></div>`;
+      `<div class="detail-hero">${bg ? `<img class="detail-bg" src="${esc(bg)}" alt="">` : ''}<div class="detail-heading"><div class="kicker">${x.rank ? `MASTER RANK #${String(x.rank).padStart(3, '0')}` : 'CUSTOM ADDITION'} // <span data-quality-rating>${esc(quality)}</span></div><h2>${esc(x.title)}</h2></div></div><div class="detail-content"><div class="detail-facts">${facts.map((f, index) => `<span class="fact" ${index === 1 ? 'data-quality-rating' : ''}>${esc(f)}</span>`).join('')}</div><div class="detail-grid"><div>${m.description ? `<h4>Synopsis</h4><p>${esc(m.description)}</p>` : '<p class="metadata-wait">Synopsis will appear when metadata is available.</p>'}${x.watch_note ? `<div class="callout"><h4>Watch note</h4><p>${esc(x.watch_note)}</p></div>` : ''}${x.caveat ? `<div class="callout"><h4>Worth knowing</h4><p>${esc(x.caveat)}</p></div>` : ''}${m.siteUrl ? `<a class="external-link" href="${esc(m.siteUrl)}" target="_blank" rel="noopener">OPEN SOURCE ↗</a>` : ''}<h4>Content</h4>${contentGuide(x, false)}${canTrackEpisodes(x) ? `<div id="episodeTrackerMount" class="episode-tracker-mount" data-episode-owner="${esc(x.id)}" data-episode-variant="detail"></div>` : ''}${x.custom ? customEditorHTML(x) : ''}${ops.length ? `<h4>Imported opinions</h4><div class="source-opinion-list">${ops.map((o) => `<div class="source-opinion"><b>${esc(o.label)}</b><span class="${o.verdict === 'recommend' ? 'yes' : 'no'}">${o.verdict === 'recommend' ? 'RECOMMENDED' : 'NOT RECOMMENDED'}</span></div>`).join('')}</div>` : ''}</div><aside><div class="user-edit"><button id="modalFavorite" class="favorite-detail ${isFavorite(id) ? 'active' : ''}" type="button">${isFavorite(id) ? '♥ FAVORITE' : '♡ ADD TO FAVORITES'}</button><label>MY RECOMMENDATION</label><div class="verdict-row"><button class="verdict-btn rec ${verdict === 'recommend' ? 'active' : ''}" data-v="recommend">RECOMMEND</button><button class="verdict-btn no ${verdict === 'avoid' ? 'active' : ''}" data-v="avoid">DON'T RECOMMEND</button><button class="verdict-btn neutral ${!verdict ? 'active' : ''}" data-v="">NEUTRAL</button></div><label>WATCH STATUS</label><select id="modalStatus">${['Not started', 'Watching', 'Completed', 'On hold', 'Dropped'].map((s) => `<option ${p.status === s ? 'selected' : ''}>${s}</option>`).join('')}</select><div class="rating-format-head"><span>MY RATING</span><div class="rating-format-toggle" role="group" aria-label="Personal rating format"><button type="button" data-rating-format="ten">10 SCALE</button><button type="button" data-rating-format="tier">S+ SCALE</button></div></div><div id="modalRatingEditor">${ratingEditorHTML(p.rating)}</div><small class="rating-scale-help" id="ratingScaleHelp">${esc(ratingScaleHelp())}</small><label>PRIVATE NOTE</label><textarea id="modalNote" maxlength="2000">${esc(p.note || '')}</textarea><button class="slash-button hot wide" id="saveDetail">${x.custom ? 'SAVE TITLE + LOCAL DATA' : 'SAVE LOCAL DATA'}</button>${x.custom ? '<button class="danger-button wide" id="removeCustomTitle" type="button">REMOVE CUSTOM TITLE</button>' : ''}</div></aside></div></div>`;
     $('#dialogBody').dataset.itemId = id;
     $('#modalFavorite').onclick = () => {
       toggleFavorite(id);
@@ -1640,6 +1673,40 @@ import { combineUserData, createUserBackup, summarizeUserData, validateUserBacku
         b.classList.add('active');
       }),
     );
+    let draftRating = Number(p.rating) || 0;
+    const renderPersonalRating = () => {
+      $('#modalRatingEditor').innerHTML = ratingEditorHTML(draftRating);
+      $('#ratingScaleHelp').textContent = ratingScaleHelp();
+      $$('[data-rating-format]', $('#dialogBody')).forEach((button) => {
+        const active = button.dataset.ratingFormat === state.ratingFormat;
+        button.classList.toggle('active', active);
+        button.setAttribute('aria-pressed', String(active));
+      });
+      $('#modalRating').addEventListener('input', (event) => {
+        draftRating = Number(event.target.value) || 0;
+      });
+    };
+    $$('[data-rating-format]', $('#dialogBody')).forEach((button) =>
+      button.addEventListener('click', () => {
+        state.ratingFormat = normalizeRatingFormat(button.dataset.ratingFormat);
+        $('#ratingFormatSelect').value = state.ratingFormat;
+        saveUIState();
+        populateFilters();
+        $$('.title-card').forEach((card) => {
+          const cardItem = itemById(card.dataset.id);
+          const badge = $('.tier', card);
+          if (cardItem && badge) badge.textContent = qualityRatingLabel(cardItem.tier, state.ratingFormat);
+        });
+        const visibleQuality = qualityRatingLabel(x.tier, state.ratingFormat, {
+          suffix: state.ratingFormat === 'ten',
+        });
+        $$('[data-quality-rating]', $('#dialogBody')).forEach((node) => {
+          node.textContent = visibleQuality;
+        });
+        renderPersonalRating();
+      }),
+    );
+    renderPersonalRating();
     if (x.custom) {
       $('#refreshCustomMetadata').onclick = async () => {
         const button = $('#refreshCustomMetadata');
@@ -1683,9 +1750,13 @@ import { combineUserData, createUserBackup, summarizeUserData, validateUserBacku
           return;
         }
       }
+      if (!Number.isFinite(draftRating) || draftRating < 0 || draftRating > 10) {
+        toast('Personal rating must be between 0 and 10');
+        return;
+      }
       progress[id] = {
         status: $('#modalStatus').value,
-        rating: Number($('#modalRating').value) || 0,
+        rating: draftRating,
         note: $('#modalNote').value.trim(),
       };
       applyManualTitleStatusToEpisodes(cachedSeriesGroup(x), progress[id].status);
@@ -1898,6 +1969,15 @@ import { combineUserData, createUserBackup, summarizeUserData, validateUserBacku
       renderMaster();
     }),
   );
+  $('#ratingFormatSelect').addEventListener('change', () => {
+    state.ratingFormat = normalizeRatingFormat($('#ratingFormatSelect').value);
+    state.visible = PAGE_SIZE;
+    saveUIState();
+    populateFilters();
+    renderMaster();
+    renderFavorites();
+    renderAdult();
+  });
   $('#loadMoreBtn').addEventListener('click', () => {
     state.visible += PAGE_SIZE;
     renderMaster();

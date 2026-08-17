@@ -40,7 +40,7 @@ function userData() {
     },
     favorites: { 'm:arcane:e7cbd6b1': true },
     episodeProgress: { 'tvmaze:123:season:1': { 1: 'watched', 2: 'watching' } },
-    ui: { searchInput: 'Arcane', statusFilter: 'Watching', hideCompleted: false },
+    ui: { searchInput: 'Arcane', statusFilter: 'Watching', ratingFormat: 'tier', hideCompleted: false },
     compact: true,
   };
 }
@@ -48,7 +48,7 @@ function userData() {
 test('private user backups preserve all supported local user data', () => {
   const backup = createUserBackup(userData(), {
     createdAt: '2026-08-17T12:00:00.000Z',
-    appVersion: '2.0.1',
+    appVersion: '2.0.2',
   });
   const restored = validateUserBackup(JSON.parse(JSON.stringify(backup)));
   const summary = summarizeUserData(restored.data);
@@ -57,6 +57,7 @@ test('private user backups preserve all supported local user data', () => {
   assert.equal(restored.version, 1);
   assert.equal(restored.data.progress['m:arcane:e7cbd6b1'].note, 'Continue with season two.');
   assert.equal(restored.data.episodeProgress['tvmaze:123:season:1']['2'], 'watching');
+  assert.equal(restored.data.ui.ratingFormat, 'tier');
   assert.deepEqual(summary, {
     statuses: 1,
     ratings: 1,

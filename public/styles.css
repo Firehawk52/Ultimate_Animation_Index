@@ -380,7 +380,7 @@ body:after {
 }
 .toolbar-shell {
   display: grid;
-  grid-template-columns: minmax(220px, 1.5fr) repeat(5, minmax(115px, 0.55fr)) 48px;
+  grid-template-columns: minmax(220px, 1.5fr) repeat(6, minmax(110px, 0.52fr)) 48px;
   gap: 8px;
   padding: 16px 0;
   background: var(--bg);
@@ -1542,6 +1542,58 @@ body:after {
   min-height: 90px;
   resize: vertical;
 }
+.rating-format-head {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: end;
+  gap: 10px;
+  margin: 12px 0 6px;
+}
+.rating-format-head > span {
+  padding-bottom: 9px;
+  color: var(--muted);
+  font: 700 9px var(--body);
+  letter-spacing: 0.12em;
+  white-space: nowrap;
+}
+.rating-format-toggle {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 4px;
+}
+.rating-format-toggle button {
+  min-height: 32px;
+  border: 1px solid var(--line);
+  background: #12161d;
+  color: #8993a3;
+  font: 800 9px var(--display);
+  letter-spacing: 0.08em;
+  transition:
+    transform 0.18s cubic-bezier(0.16, 1, 0.3, 1),
+    border-color 0.18s cubic-bezier(0.16, 1, 0.3, 1),
+    background 0.18s cubic-bezier(0.16, 1, 0.3, 1),
+    color 0.18s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.rating-format-toggle button:hover {
+  border-color: #657186;
+  color: #eef2f7;
+}
+.rating-format-toggle button:active {
+  transform: scale(0.98);
+}
+.rating-format-toggle button.active {
+  border-color: var(--cyan);
+  background: #101c23;
+  color: var(--cyan);
+}
+.rating-scale-help {
+  display: block;
+  min-height: 24px;
+  margin-top: 6px;
+  color: #7f8999;
+  font: 600 8px/1.5 var(--body);
+  letter-spacing: 0.05em;
+}
 .favorite-detail {
   width: 100%;
   min-height: 44px;
@@ -1710,7 +1762,7 @@ body:after {
     grid-template-columns: repeat(5, 1fr);
   }
   .toolbar-shell {
-    grid-template-columns: minmax(220px, 1.3fr) repeat(3, minmax(110px, 0.6fr)) 140px 140px 48px;
+    grid-template-columns: minmax(220px, 1.3fr) repeat(4, minmax(105px, 0.6fr)) 130px 130px 48px;
   }
   .collection-grid {
     grid-template-columns: repeat(3, 1fr);
@@ -2797,6 +2849,12 @@ textarea:focus-visible,
   }
 }
 @media (max-width: 520px) {
+  .rating-format-head {
+    grid-template-columns: 1fr;
+  }
+  .rating-format-head > span {
+    padding-bottom: 0;
+  }
   .episode-tracker-head,
   .episode-overview,
   .episode-key {
