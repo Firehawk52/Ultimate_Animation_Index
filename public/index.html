@@ -16,7 +16,7 @@
       href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:ital,wght@0,600;0,700;0,800;1,700&family=Space+Grotesk:wght@400;500;600;700&display=swap"
       rel="stylesheet"
     />
-    <link rel="stylesheet" href="styles.css?v=2.0.1" />
+    <link rel="stylesheet" href="styles.css?v=2.0.2" />
   </head>
   <body>
     <div class="noise"></div>
@@ -91,6 +91,10 @@
             <option>Completed</option>
             <option>On hold</option>
             <option>Dropped</option>
+          </select>
+          <select id="ratingFormatSelect" aria-label="Rating format">
+            <option value="tier">RATING: S+ SCALE</option>
+            <option value="ten">RATING: 10 SCALE</option>
           </select>
           <select id="sortSelect" aria-label="Sort order">
             <option value="rank">MASTER RANK</option>
@@ -347,6 +351,6 @@
     </dialog>
 
     <div class="toast" id="toast" popover="manual"></div>
-    <script type="module" src="app.js?v=2.0.1"></script>
+    <script type="module" src="app.js?v=2.0.2"></script>
   </body>
 </html>
