@@ -19,6 +19,7 @@ See the [changelog](CHANGELOG.md) for release history and version 2.0 details.
 - **One worldwide catalog:** anime, films, OVAs, donghua and animation beyond Japan
 - **Local personal data:** progress, ratings, notes and favorites stay in your browser
 - **Selectable rating format:** use either the S+ letter scale or a 10-point scale throughout the interface
+- **Update notifications:** receive an in-app link when a newer GitHub release is available
 - **Cover-level progress:** distinct status icons show not started, watching, completed,
   on hold and dropped titles without opening their details
 - **Unified episode tracking:** AniList sequels and prequels are grouped into seasons under one series,

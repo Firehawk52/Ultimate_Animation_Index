@@ -2,6 +2,15 @@
 
 All notable changes to Ultimate Animation Index are documented here.
 
+## [2.0.4] - 2026-08-17
+
+### Automatic update notifications
+
+- Added a cached server-side check for the latest published GitHub release.
+- Added an in-app update notice with the installed version, latest version and direct release link.
+- Allowed each release notice to be dismissed locally without hiding notifications for future versions.
+- Kept update-check failures silent so the self-hosted catalog remains fully usable offline.
+
 ## [2.0.3] - 2026-08-17
 
 ### Portable UserList verification

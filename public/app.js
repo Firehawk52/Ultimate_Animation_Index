@@ -8,7 +8,7 @@ import {
 
 (async () => {
   'use strict';
-  const APP_VERSION = '2.0.3';
+  const APP_VERSION = '2.0.4';
   const catalogResponse = await fetch('catalog.json');
   if (!catalogResponse.ok) throw new Error(`Could not load catalog (${catalogResponse.status})`);
   const CAT = await catalogResponse.json();
@@ -24,6 +24,7 @@ import {
     ui: 'uai:ui-state:v1',
     episodes: 'uai:episode-progress:v1',
     series: 'uai:series-groups:v1',
+    dismissedUpdate: 'uai:dismissed-update:v1',
   };
   const $ = (s, r = document) => r.querySelector(s),
     $$ = (s, r = document) => [...r.querySelectorAll(s)];
@@ -74,6 +75,7 @@ import {
   const seriesLoading = new Map();
   let metaPumping = false,
     metaSaveTimer = null;
+  let availableUpdate = '';
   const masterItems = CAT.items || [];
   const masterById = new Map(masterItems.map((x) => [x.id, x]));
   const aliasMap = new Map();
@@ -835,6 +837,31 @@ import {
       $('#securityState').classList.add('bad');
       $('#securityState').innerHTML =
         '<b>USERLIST SIGNING OFFLINE</b><span>Start the included server to create or verify signed UserList codes.</span>';
+    }
+  }
+  async function checkForUpdates() {
+    try {
+      const response = await fetch('/api/version', { cache: 'no-store' });
+      if (!response.ok) return;
+      const release = await response.json();
+      if (!release.ok || !release.updateAvailable || !release.latest || !release.releaseUrl) return;
+      if (load(STORE.dismissedUpdate, '') === release.latest) return;
+      const releaseUrl = new URL(release.releaseUrl);
+      if (
+        releaseUrl.protocol !== 'https:' ||
+        releaseUrl.hostname !== 'github.com' ||
+        !releaseUrl.pathname.startsWith('/Firehawk52/Ultimate_Animation_Index/releases/tag/')
+      )
+        return;
+      availableUpdate = release.latest;
+      $('#updateLatestVersion').textContent = release.latest;
+      $('#updateCurrentVersion').textContent = release.current || APP_VERSION;
+      $('#updateReleaseLink').href = releaseUrl.href;
+      const notice = $('#updateNotice');
+      notice.hidden = false;
+      requestAnimationFrame(() => notice.classList.add('show'));
+    } catch {
+      // Update checks are advisory and must never interrupt the local catalog.
     }
   }
   function renderUserSummary() {
@@ -2044,6 +2071,14 @@ import {
   $('#collectionDialog').addEventListener('click', (e) => {
     if (e.target === $('#collectionDialog')) $('#collectionDialog').close();
   });
+  $('#dismissUpdateBtn').addEventListener('click', () => {
+    if (availableUpdate) save(STORE.dismissedUpdate, availableUpdate);
+    const notice = $('#updateNotice');
+    notice.classList.remove('show');
+    setTimeout(() => {
+      notice.hidden = true;
+    }, 280);
+  });
 
   // boot
   populateFilters();
@@ -2056,6 +2091,7 @@ import {
   renderUserSummary();
   updateHero();
   checkServer();
+  checkForUpdates();
   const backupImportMessage = sessionStorage.getItem('uai:backup-import-message');
   if (backupImportMessage) {
     sessionStorage.removeItem('uai:backup-import-message');

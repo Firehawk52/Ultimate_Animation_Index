@@ -9,6 +9,7 @@ const {
   estimateContentRatings,
   fromAniListSeriesMedia,
   fromTVMazeSeries,
+  isNewerVersion,
   server,
   startServer,
   tvMazeSeriesNeedsRefresh,
@@ -42,6 +43,15 @@ test('health endpoint reports a ready signing service', async () => {
   assert.equal(body.format, 'UWL2');
   assert.equal(body.userListSchema, 3);
   assert.match(body.keyId, /^[a-f0-9]{16}$/);
+});
+
+test('release versions are compared by semantic version components', () => {
+  assert.equal(isNewerVersion('v2.0.5', '2.0.4'), true);
+  assert.equal(isNewerVersion('2.1.0', '2.0.9'), true);
+  assert.equal(isNewerVersion('3.0.0', '2.9.9'), true);
+  assert.equal(isNewerVersion('2.0.4', '2.0.4'), false);
+  assert.equal(isNewerVersion('2.0.3', '2.0.4'), false);
+  assert.equal(isNewerVersion('latest', '2.0.4'), false);
 });
 
 test('home page is served with security headers', async () => {
