@@ -23,6 +23,7 @@ All notable changes to Ultimate Animation Index are documented here.
 ### Release engineering and project governance
 
 - Expanded CI to Node.js 20 and 22 on Linux, Windows and macOS, including executable-launcher checks.
+- Updated GitHub Actions to their Node.js 24-based releases.
 - Added one stable protected-branch gate that aggregates every matrix test and the container build.
 - Added structured bug, feature and pull-request templates plus monthly dependency update checks.
 - Added a repository-wide CODEOWNERS rule so contribution reviews reach the maintainer automatically.
