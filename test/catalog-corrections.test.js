@@ -57,7 +57,7 @@ test('stale correction packages are rejected before changing the catalog', () =>
   );
 });
 
-test('completed custom titles can be promoted to unranked catalog entries', () => {
+test('completed custom titles receive the next catalog rank when promoted', () => {
   const entry = {
     operation: 'add',
     id: 'c:review-candidate:123abc',
@@ -77,7 +77,9 @@ test('completed custom titles can be promoted to unranked catalog entries', () =
   };
   const result = applyCorrectionPackage(source, packageWith([entry]));
   const added = result.catalog.items.at(-1);
+  const previousHighestRank = Math.max(...source.items.map((item) => Number(item.rank) || 0));
   assert.equal(added.id, entry.id);
+  assert.equal(added.rank, previousHighestRank + 1);
   assert.equal(added.tier, 'A');
   assert.deepEqual(added.scores, entry.values.scores);
 });

@@ -17,7 +17,7 @@
       href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:ital,wght@0,600;0,700;0,800;1,700&family=Space+Grotesk:wght@400;500;600;700&display=swap"
       rel="stylesheet"
     />
-    <link rel="stylesheet" href="styles.css?v=2.2.2" />
+    <link rel="stylesheet" href="styles.css?v=2.2.3" />
   </head>
   <body>
     <a class="skip-link" href="#mainContent">Skip to content</a>
@@ -355,6 +355,12 @@
                   maxlength="80"
                   placeholder="Japan / US / China / ..."
               /></label>
+              <label class="adult-catalog-toggle add-adult-toggle">
+                <input id="addTitleAdult" type="checkbox" />
+                <span aria-hidden="true"></span>
+                <b>ADD TO ADULT</b>
+                <small>Show this custom title in the Adult section.</small>
+              </label>
               <button class="slash-button wide" type="submit">RESOLVE + ADD</button>
             </form>
             <div id="addResult" class="import-result"></div>
@@ -467,6 +473,6 @@
     </dialog>
 
     <div class="toast" id="toast" popover="manual"></div>
-    <script type="module" src="app.js?v=2.2.2"></script>
+    <script type="module" src="app.js?v=2.2.3"></script>
   </body>
 </html>

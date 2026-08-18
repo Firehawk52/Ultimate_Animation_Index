@@ -8,7 +8,7 @@ import {
 
 (async () => {
   'use strict';
-  const APP_VERSION = '2.2.2';
+  const APP_VERSION = '2.2.3';
   const catalogResponse = await fetch('catalog.json');
   if (!catalogResponse.ok) throw new Error(`Could not load catalog (${catalogResponse.status})`);
   const CAT = await catalogResponse.json();
@@ -23,7 +23,7 @@ import {
     favorites: 'uai:favorites:v1',
     ui: 'uai:ui-state:v1',
     episodes: 'uai:episode-progress:v1',
-    series: 'uai:series-groups:v1',
+    series: 'uai:series-groups:v2',
     catalogCorrections: 'uai:catalog-corrections:v1',
     dismissedUpdate: 'uai:dismissed-update:v1',
   };
@@ -44,6 +44,7 @@ import {
   };
   const save = (k, v) => localStorage.setItem(k, JSON.stringify(v));
   const savedUI = load(STORE.ui, {});
+  const ADULT_CATALOG_TAG = 'Adult Catalog';
   const adultModes = ['all', 'ecchi', 'erotic', 'hentai', 'gore', 'violence', 'disturbing'];
   const collectionSortModes = ['rating', 'release', 'name'];
   const collectionSortOrders = ['asc', 'desc'];
@@ -504,6 +505,19 @@ import {
       tags.length > 0 ||
       Math.max(c.sex || 0, c.nudity || 0, c.violence || 0, c.gore || 0, c.disturbing || 0) >= 4
     );
+  }
+
+  function isAdultCatalogTitle(content = {}) {
+    return normalizedContent(content).tags.some(
+      (tag) => tag.toLowerCase() === ADULT_CATALOG_TAG.toLowerCase(),
+    );
+  }
+
+  function setAdultCatalogTitle(content = {}, included = false) {
+    const normalized = normalizedContent(content);
+    normalized.tags = normalized.tags.filter((tag) => tag.toLowerCase() !== ADULT_CATALOG_TAG.toLowerCase());
+    if (included) normalized.tags.push(ADULT_CATALOG_TAG);
+    return normalized;
   }
   function adultFilterItems(mode = state.adult) {
     return canonicalItems()
@@ -1620,7 +1634,8 @@ import {
   function contentIsEmpty(content) {
     const value = normalizedContent(content);
     return (
-      !value.tags.length && !['sex', 'nudity', 'violence', 'gore', 'disturbing'].some((key) => value[key])
+      !value.tags.some((tag) => tag.toLowerCase() !== ADULT_CATALOG_TAG.toLowerCase()) &&
+      !['sex', 'nudity', 'violence', 'gore', 'disturbing'].some((key) => value[key])
     );
   }
 
@@ -1665,7 +1680,7 @@ import {
     if ((!x.genres || x.genres === 'Custom addition') && Array.isArray(data.genres) && data.genres.length)
       x.genres = data.genres.join(', ');
     if (contentIsEmpty(x.content) && data.content) {
-      x.content = normalizedContent(data.content);
+      x.content = setAdultCatalogTitle(data.content, isAdultCatalogTitle(x.content));
       x.contentEstimated = true;
     }
     meta[x.id] = { ts: Date.now(), data };
@@ -1702,7 +1717,8 @@ import {
       raw = $('#addTitleName').value.trim(),
       year = Number($('#addTitleYear').value) || 0,
       type = $('#addTitleType').value,
-      origin = $('#addTitleOrigin').value.trim() || 'Unknown';
+      origin = $('#addTitleOrigin').value.trim() || 'Unknown',
+      includeInAdult = $('#addTitleAdult').checked || type === 'Adult / Hentai';
     out.className = 'import-result';
     if (!raw) {
       return;
@@ -1755,6 +1771,7 @@ import {
       content: resolved?.content,
     };
     const x = customFromPayload(t, true);
+    x.content = setAdultCatalogTitle(x.content, includeInAdult);
     if (resolved?.content && !contentIsEmpty(resolved.content)) x.contentEstimated = true;
     customTitles.push(x);
     save(STORE.custom, customTitles);
@@ -1799,7 +1816,7 @@ import {
       ['Gore', 'gore'],
       ['Disturbing', 'disturbing'],
     ];
-    return `<section class="custom-editor"><h4>Edit custom metadata</h4><p>These fields are included when this title is exported in a signed UserList. Provider-based content ratings are estimates and should be reviewed.</p><button id="refreshCustomMetadata" class="slash-button small" type="button">${x.contentEstimated ? 'REFRESH ESTIMATED METADATA' : 'FIND MISSING METADATA'}</button><div class="custom-editor-grid"><label class="field-label">TITLE<input id="customTitle" type="text" maxlength="180" value="${esc(x.title)}"></label><div class="field-row"><label class="field-label">YEAR<input id="customYear" type="number" min="0" max="2200" value="${Number(x.year) || ''}" placeholder="Unknown"></label><label class="field-label">FORMAT<select id="customType">${formats.map((type) => `<option ${x.type === type ? 'selected' : ''}>${esc(type)}</option>`).join('')}</select></label></div><label class="field-label">ORIGIN<input id="customOrigin" type="text" maxlength="80" value="${esc(x.origin || '')}" placeholder="Japan / US / China / …"></label><label class="field-label">GENRES / TAGS<textarea id="customGenres" maxlength="500" placeholder="Fantasy, Adventure, Drama">${esc(x.genres || '')}</textarea></label><label class="field-label">CONTENT LABELS<input id="customContentTags" type="text" maxlength="500" value="${esc(content.tags.join(', '))}" placeholder="Ecchi, Gore, Adult Only, …"></label><div class="custom-content-fields">${levels.map(([label, key]) => `<label>${esc(label)}<input id="customContent-${key}" type="number" min="0" max="5" step="1" value="${content[key]}"><span>/5</span></label>`).join('')}</div></div></section>`;
+    return `<details class="custom-editor optional-editor"><summary class="optional-editor-summary"><div><span>CUSTOM DATA</span><h4>Edit custom metadata</h4></div><b>LOCAL TITLE</b><i class="optional-editor-chevron" aria-hidden="true"></i></summary><div class="optional-editor-body"><p>These fields are included when this title is exported in a signed UserList. Provider-based content ratings are estimates and should be reviewed.</p><button id="refreshCustomMetadata" class="slash-button small" type="button">${x.contentEstimated ? 'REFRESH ESTIMATED METADATA' : 'FIND MISSING METADATA'}</button><div class="custom-editor-grid"><label class="field-label">TITLE<input id="customTitle" type="text" maxlength="180" value="${esc(x.title)}"></label><div class="field-row"><label class="field-label">YEAR<input id="customYear" type="number" min="0" max="2200" value="${Number(x.year) || ''}" placeholder="Unknown"></label><label class="field-label">FORMAT<select id="customType">${formats.map((type) => `<option ${x.type === type ? 'selected' : ''}>${esc(type)}</option>`).join('')}</select></label></div><label class="field-label">ORIGIN<input id="customOrigin" type="text" maxlength="80" value="${esc(x.origin || '')}" placeholder="Japan / US / China / …"></label><label class="field-label">GENRES / TAGS<textarea id="customGenres" maxlength="500" placeholder="Fantasy, Adventure, Drama">${esc(x.genres || '')}</textarea></label><label class="field-label">CONTENT LABELS<input id="customContentTags" type="text" maxlength="500" value="${esc(content.tags.join(', '))}" placeholder="Ecchi, Gore, Adult Only, …"></label>${adultCatalogToggleHTML(content, 'customAdult')}<div class="custom-content-fields">${levels.map(([label, key]) => `<label>${esc(label)}<input id="customContent-${key}" type="number" min="0" max="5" step="1" value="${content[key]}"><span>/5</span></label>`).join('')}</div></div></div></details>`;
   }
 
   const CATALOG_SCORE_FIELDS = [
@@ -1822,17 +1839,21 @@ import {
 
   function catalogContentFieldsHTML(content = {}, prefix = 'catalogContent') {
     const normalized = normalizedContent(content);
-    return `<label class="field-label">CONTENT LABELS<input id="${prefix}-tags" type="text" maxlength="500" value="${esc(normalized.tags.join(', '))}" placeholder="Ecchi, Gore, Adult Only, …"></label><div class="custom-content-fields">${CATALOG_CONTENT_FIELDS.map(([label, key]) => `<label>${esc(label)}<input id="${prefix}-${key}" type="number" min="0" max="5" step="1" value="${normalized[key]}" required><span>/5</span></label>`).join('')}</div>`;
+    return `<label class="field-label">CONTENT LABELS<input id="${prefix}-tags" type="text" maxlength="500" value="${esc(normalized.tags.join(', '))}" placeholder="Ecchi, Gore, Adult Only, …"></label>${adultCatalogToggleHTML(normalized, `${prefix}-adult`)}<div class="custom-content-fields">${CATALOG_CONTENT_FIELDS.map(([label, key]) => `<label>${esc(label)}<input id="${prefix}-${key}" type="number" min="0" max="5" step="1" value="${normalized[key]}" required><span>/5</span></label>`).join('')}</div>`;
+  }
+
+  function adultCatalogToggleHTML(content, id) {
+    return `<label class="adult-catalog-toggle" for="${id}"><input id="${id}" type="checkbox" ${isAdultCatalogTitle(content) ? 'checked' : ''}><span aria-hidden="true"></span><b>PROMOTE TO ADULT</b><small>Explicitly includes this title in the Adult section.</small></label>`;
   }
 
   function catalogCorrectionEditorHTML(x) {
     const pending = Boolean(catalogDrafts[x.id]);
-    return `<section class="catalog-editor ${pending ? 'has-draft' : ''}"><div class="catalog-editor-head"><div><span>CURATED DATA</span><h4>Edit catalog ratings</h4></div><b>${pending ? 'DRAFT SAVED' : 'CATALOG VALUES'}</b></div><p>Changes can be saved to this installation or added to a correction package for review and sharing.</p>${catalogScoreFieldsHTML(x.scores)}${catalogContentFieldsHTML(x.content)}<div class="catalog-editor-actions"><button id="saveCatalogDraft" class="slash-button wide" type="button">SAVE TO REVIEW PACKAGE</button>${state.catalogWriteEnabled ? '<button id="applyCatalogDirect" class="slash-button hot wide" type="button">SAVE TO THIS INSTALLATION</button>' : ''}</div><div id="catalogEditorResult" class="import-result"></div></section>`;
+    return `<details class="catalog-editor optional-editor ${pending ? 'has-draft' : ''}"><summary class="catalog-editor-head optional-editor-summary"><div><span>CURATED DATA</span><h4>Edit catalog ratings</h4></div><b>${pending ? 'DRAFT SAVED' : 'CATALOG VALUES'}</b><i class="optional-editor-chevron" aria-hidden="true"></i></summary><div class="optional-editor-body"><p>Changes can be saved to this installation or added to a correction package for review and sharing.</p>${catalogScoreFieldsHTML(x.scores)}${catalogContentFieldsHTML(x.content)}<div class="catalog-editor-actions"><button id="saveCatalogDraft" class="slash-button wide" type="button">SAVE TO REVIEW PACKAGE</button>${state.catalogWriteEnabled ? '<button id="applyCatalogDirect" class="slash-button hot wide" type="button">SAVE TO THIS INSTALLATION</button>' : ''}</div><div id="catalogEditorResult" class="import-result"></div></div></details>`;
   }
 
   function customPromotionHTML(x) {
     const pending = Boolean(catalogDrafts[x.id]);
-    return `<section class="catalog-editor promotion-editor ${pending ? 'has-draft' : ''}"><div class="catalog-editor-head"><div><span>CATALOG CANDIDATE</span><h4>Promote custom title</h4></div><b>${pending ? 'READY FOR REVIEW' : 'MISSING QUALITY SCORES'}</b></div><p>All four quality scores and all five content ratings are required before a custom title can become part of the installation catalog.</p>${catalogScoreFieldsHTML(x.scores, 'promotionScore')}<div class="catalog-editor-actions"><button id="stageCustomPromotion" class="slash-button wide" type="button">ADD TO REVIEW PACKAGE</button>${state.catalogWriteEnabled ? '<button id="applyCustomDirect" class="slash-button hot wide" type="button">ADD TO THIS INSTALLATION</button>' : ''}</div><div id="promotionResult" class="import-result"></div></section>`;
+    return `<details class="catalog-editor optional-editor promotion-editor ${pending ? 'has-draft' : ''}"><summary class="catalog-editor-head optional-editor-summary"><div><span>CATALOG CANDIDATE</span><h4>Promote custom title</h4></div><b>${pending ? 'READY FOR REVIEW' : 'QUALITY SCORES REQUIRED'}</b><i class="optional-editor-chevron" aria-hidden="true"></i></summary><div class="optional-editor-body"><p>All four quality scores and all five content ratings are required before a custom title can become part of the installation catalog.</p>${catalogScoreFieldsHTML(x.scores, 'promotionScore')}<div class="catalog-editor-actions"><button id="stageCustomPromotion" class="slash-button wide" type="button">ADD TO REVIEW PACKAGE</button>${state.catalogWriteEnabled ? '<button id="applyCustomDirect" class="slash-button hot wide" type="button">ADD TO THIS INSTALLATION</button>' : ''}</div><div id="promotionResult" class="import-result"></div></div></details>`;
   }
 
   function readCatalogScores(prefix) {
@@ -1855,7 +1876,7 @@ import {
       content[key] = value;
     }
     content.tags = parseCustomTags($(`#${prefix}-tags`).value);
-    return content;
+    return setAdultCatalogTitle(content, $(`#${prefix}-adult`).checked);
   }
 
   function catalogSnapshotForBrowser(item) {
@@ -2176,14 +2197,17 @@ import {
       delete meta[x.id];
       save(STORE.meta, meta);
     }
-    x.content = {
-      sex: level('sex'),
-      nudity: level('nudity'),
-      violence: level('violence'),
-      gore: level('gore'),
-      disturbing: level('disturbing'),
-      tags: parseCustomTags($('#customContentTags').value),
-    };
+    x.content = setAdultCatalogTitle(
+      {
+        sex: level('sex'),
+        nudity: level('nudity'),
+        violence: level('violence'),
+        gore: level('gore'),
+        disturbing: level('disturbing'),
+        tags: parseCustomTags($('#customContentTags').value),
+      },
+      $('#customAdult').checked,
+    );
     x.contentEstimated = false;
     save(STORE.custom, customTitles);
     return lookupChanged;
@@ -2737,6 +2761,9 @@ import {
   $('#previewCorrectionCode').addEventListener('click', previewCorrectionPackage);
   $('#applyReviewedCorrections').addEventListener('click', applyReviewedCorrectionPackage);
   $('#addTitleForm').addEventListener('submit', addTitle);
+  $('#addTitleType').addEventListener('change', (event) => {
+    if (event.target.value === 'Adult / Hentai') $('#addTitleAdult').checked = true;
+  });
   $('#dialogClose').addEventListener('click', () => $('#detailDialog').close());
   $('#collectionClose').addEventListener('click', () => $('#collectionDialog').close());
   $('#detailDialog').addEventListener('click', (e) => {

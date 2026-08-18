@@ -4,6 +4,23 @@ All notable changes to Ultimate Animation Index are documented here.
 
 ## Unreleased
 
+## [2.2.3] - 2026-08-19
+
+### Added
+
+- Updated Attack on Titan franchise guidance to keep all OVA and side-story entries in the intended watch order.
+- Ensured AniList series now includes OVA/ONA/SPECIAL `SIDE_STORY` relations when building unified series trackers, so missing side stories appear.
+- Added **Elfen Lied** to the official catalog and explicitly promoted it to the Adult section.
+- Added an Adult-section control to catalog rating edits, custom-title edits and the missing-title form; the selection is preserved in UserLists, backups and catalog correction packages.
+
+### Changed
+
+- Kept the one-click catalog-update cache key versioned to avoid stale episode-group state when OVA-side metadata changed.
+- Added explicit adult-section toggles to custom metadata and catalog editors, with options preserved in UserLists, backups, and review packages.
+- Assigned each newly accepted catalog title a deterministic next catalog rank so new entries no longer display `ADD`.
+- Kept the large hand-curated catalog source outside automatic Prettier rewrites so individual title additions remain small and reviewable in GitHub diffs.
+- Collapsed catalog rating edits, custom metadata edits and custom-title promotion controls by default, keeping infrequently used tools accessible without dominating title details.
+
 ## [2.2.2] - 2026-08-18
 
 ### Changed

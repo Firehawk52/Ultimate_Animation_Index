@@ -218,7 +218,7 @@ test('provider metadata is converted into conservative content-rating estimates'
   );
 });
 
-test('AniList series entries retain episodes and only main sequence relations', () => {
+test('AniList series entries retain main sequence and OVA side-story relations', () => {
   const entry = fromAniListSeriesMedia({
     id: 42,
     title: { english: 'Example Special', romaji: 'Example' },
@@ -228,8 +228,9 @@ test('AniList series entries retain episodes and only main sequence relations', 
     episodes: null,
     relations: {
       edges: [
-        { relationType: 'SEQUEL', node: { id: 43, type: 'ANIME' } },
-        { relationType: 'SIDE_STORY', node: { id: 44, type: 'ANIME' } },
+        { relationType: 'SEQUEL', node: { id: 43, type: 'ANIME', format: 'TV' } },
+        { relationType: 'SIDE_STORY', node: { id: 44, type: 'ANIME', format: 'OVA' } },
+        { relationType: 'SIDE_STORY', node: { id: 46, type: 'ANIME', format: 'TV' } },
         { relationType: 'PREQUEL', node: { id: 45, type: 'MANGA' } },
       ],
     },
@@ -238,7 +239,10 @@ test('AniList series entries retain episodes and only main sequence relations', 
   assert.equal(entry.id, '42');
   assert.equal(entry.episodes, 1);
   assert.equal(entry.startDate, '2026-04-09');
-  assert.deepEqual(entry.relations, [{ id: '43', type: 'SEQUEL' }]);
+  assert.deepEqual(entry.relations, [
+    { id: '43', type: 'SEQUEL' },
+    { id: '44', type: 'SIDE_STORY' },
+  ]);
 });
 
 test('only active AniList series groups refresh when their tracker opens', () => {

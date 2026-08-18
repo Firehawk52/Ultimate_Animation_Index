@@ -175,6 +175,7 @@ export function applyCorrectionPackage(catalog, input, { generatedAt = new Date(
   const correction = validateCorrectionPackage(input, catalog);
   const next = structuredClone(catalog);
   const items = new Map(next.items.map((item) => [item.id, item]));
+  let nextRank = Math.max(0, ...next.items.map((item) => Number(item.rank) || 0)) + 1;
   for (const entry of correction.entries) {
     if (entry.operation === 'update') {
       applyScores(items.get(entry.id), entry.values);
@@ -195,6 +196,7 @@ export function applyCorrectionPackage(catalog, input, { generatedAt = new Date(
       sourceUrl: '',
       caveat: '',
       watch_note: '',
+      rank: nextRank++,
     };
     applyScores(item, entry.values);
     next.items.push(item);

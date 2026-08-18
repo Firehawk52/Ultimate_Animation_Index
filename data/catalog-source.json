@@ -27,14 +27,18 @@
       "sourceUrl": "https://anilist.co/search/anime?search=Attack+on+Titan",
       "quality_band": "S+",
       "id": "m:attack-on-titan:58054c18",
-      "aliases": ["shingeki no kyojin"],
+      "aliases": [
+        "shingeki no kyojin"
+      ],
       "content": {
         "sex": 0,
         "nudity": 1,
         "violence": 5,
         "gore": 4,
         "disturbing": 5,
-        "tags": ["Adult Only"]
+        "tags": [
+          "Adult Only"
+        ]
       },
       "scores": {
         "overall": 100,
@@ -68,7 +72,9 @@
       "sourceUrl": "https://anilist.co/search/anime?search=Fullmetal+Alchemist%3A+Brotherhood",
       "quality_band": "S+",
       "id": "m:fullmetal-alchemist-brotherhood:35eb6fdb",
-      "aliases": ["hagane no renkinjutsushi brotherhood"],
+      "aliases": [
+        "hagane no renkinjutsushi brotherhood"
+      ],
       "content": {
         "sex": 1,
         "nudity": 2,
@@ -239,7 +245,9 @@
         "violence": 5,
         "gore": 0,
         "disturbing": 5,
-        "tags": ["Adult Only"]
+        "tags": [
+          "Adult Only"
+        ]
       },
       "scores": {
         "overall": 100,
@@ -554,7 +562,10 @@
       "rank": 14,
       "quality_band": "S+",
       "id": "m:your-name:ae3ed0ee",
-      "aliases": ["kimi no na wa", "kimi no na wa."],
+      "aliases": [
+        "kimi no na wa",
+        "kimi no na wa."
+      ],
       "content": {
         "sex": 1,
         "nudity": 1,
@@ -602,7 +613,10 @@
         "violence": 5,
         "gore": 5,
         "disturbing": 5,
-        "tags": ["Adult Animation", "Gore"]
+        "tags": [
+          "Adult Animation",
+          "Gore"
+        ]
       },
       "scores": {
         "overall": 100,
@@ -848,7 +862,9 @@
         "violence": 5,
         "gore": 4,
         "disturbing": 5,
-        "tags": ["Adult Only"]
+        "tags": [
+          "Adult Only"
+        ]
       },
       "scores": {
         "overall": 94,
@@ -1003,7 +1019,9 @@
         "violence": 5,
         "gore": 4,
         "disturbing": 5,
-        "tags": ["Adult Only"]
+        "tags": [
+          "Adult Only"
+        ]
       },
       "scores": {
         "overall": 88,
@@ -1198,7 +1216,10 @@
       "sourceUrl": "https://anilist.co/search/anime?search=Haikyuu%21%21",
       "quality_band": "A+",
       "id": "m:haikyu:32658d9a",
-      "aliases": ["haikyuu", "haikyuu!!"],
+      "aliases": [
+        "haikyuu",
+        "haikyuu!!"
+      ],
       "content": {
         "sex": 0,
         "nudity": 0,
@@ -1246,7 +1267,10 @@
         "violence": 4,
         "gore": 2,
         "disturbing": 5,
-        "tags": ["Adult Animation", "Disturbing"]
+        "tags": [
+          "Adult Animation",
+          "Disturbing"
+        ]
       },
       "scores": {
         "overall": 100,
@@ -1366,7 +1390,9 @@
         "violence": 5,
         "gore": 4,
         "disturbing": 5,
-        "tags": ["Adult Only"]
+        "tags": [
+          "Adult Only"
+        ]
       },
       "scores": {
         "overall": 100,
@@ -1571,7 +1597,9 @@
         "violence": 5,
         "gore": 4,
         "disturbing": 5,
-        "tags": ["Adult Only"]
+        "tags": [
+          "Adult Only"
+        ]
       },
       "scores": {
         "overall": 94,
@@ -1612,7 +1640,10 @@
         "violence": 5,
         "gore": 4,
         "disturbing": 4,
-        "tags": ["Adult Animation", "Extreme Violence"]
+        "tags": [
+          "Adult Animation",
+          "Extreme Violence"
+        ]
       },
       "scores": {
         "overall": 100,
@@ -1899,7 +1930,9 @@
         "violence": 5,
         "gore": 4,
         "disturbing": 5,
-        "tags": ["Adult Only"]
+        "tags": [
+          "Adult Only"
+        ]
       },
       "scores": {
         "overall": 94,
@@ -3003,7 +3036,9 @@
         "violence": 5,
         "gore": 4,
         "disturbing": 5,
-        "tags": ["Adult Only"]
+        "tags": [
+          "Adult Only"
+        ]
       },
       "scores": {
         "overall": 94,
@@ -3126,7 +3161,9 @@
         "violence": 5,
         "gore": 4,
         "disturbing": 5,
-        "tags": ["Adult Only"]
+        "tags": [
+          "Adult Only"
+        ]
       },
       "scores": {
         "overall": 88,
@@ -3741,7 +3778,9 @@
         "violence": 5,
         "gore": 0,
         "disturbing": 4,
-        "tags": ["Adult Only"]
+        "tags": [
+          "Adult Only"
+        ]
       },
       "scores": {
         "overall": 94,
@@ -3864,7 +3903,12 @@
         "violence": 5,
         "gore": 5,
         "disturbing": 5,
-        "tags": ["Adult Animation", "Erotic", "Gore", "Disturbing"]
+        "tags": [
+          "Adult Animation",
+          "Erotic",
+          "Gore",
+          "Disturbing"
+        ]
       },
       "scores": {
         "overall": 94,
@@ -3905,7 +3949,9 @@
         "violence": 5,
         "gore": 4,
         "disturbing": 5,
-        "tags": ["Adult Only"]
+        "tags": [
+          "Adult Only"
+        ]
       },
       "scores": {
         "overall": 100,
@@ -3946,7 +3992,9 @@
         "violence": 5,
         "gore": 3,
         "disturbing": 4,
-        "tags": ["Adult Only"]
+        "tags": [
+          "Adult Only"
+        ]
       },
       "scores": {
         "overall": 94,
@@ -3980,7 +4028,9 @@
       "sourceUrl": "https://anilist.co/search/anime?search=Summer+Time+Rendering",
       "quality_band": "S+",
       "id": "m:summer-time-rendering:5ae214ac",
-      "aliases": ["summertime rendering"],
+      "aliases": [
+        "summertime rendering"
+      ],
       "content": {
         "sex": 2,
         "nudity": 3,
@@ -4069,7 +4119,9 @@
         "violence": 5,
         "gore": 0,
         "disturbing": 4,
-        "tags": ["Adult Only"]
+        "tags": [
+          "Adult Only"
+        ]
       },
       "scores": {
         "overall": 94,
@@ -4151,7 +4203,9 @@
         "violence": 5,
         "gore": 0,
         "disturbing": 5,
-        "tags": ["Adult Only"]
+        "tags": [
+          "Adult Only"
+        ]
       },
       "scores": {
         "overall": 94,
@@ -4192,7 +4246,9 @@
         "violence": 5,
         "gore": 0,
         "disturbing": 4,
-        "tags": ["Adult Only"]
+        "tags": [
+          "Adult Only"
+        ]
       },
       "scores": {
         "overall": 94,
@@ -4233,7 +4289,11 @@
         "violence": 5,
         "gore": 5,
         "disturbing": 5,
-        "tags": ["Adult Animation", "Gore", "Extreme Violence"]
+        "tags": [
+          "Adult Animation",
+          "Gore",
+          "Extreme Violence"
+        ]
       },
       "scores": {
         "overall": 94,
@@ -4274,7 +4334,9 @@
         "violence": 5,
         "gore": 4,
         "disturbing": 5,
-        "tags": ["Adult Only"]
+        "tags": [
+          "Adult Only"
+        ]
       },
       "scores": {
         "overall": 94,
@@ -4356,7 +4418,9 @@
         "violence": 4,
         "gore": 0,
         "disturbing": 3,
-        "tags": ["Adult Only"]
+        "tags": [
+          "Adult Only"
+        ]
       },
       "scores": {
         "overall": 76,
@@ -4397,7 +4461,9 @@
         "violence": 4,
         "gore": 0,
         "disturbing": 3,
-        "tags": ["Adult Only"]
+        "tags": [
+          "Adult Only"
+        ]
       },
       "scores": {
         "overall": 88,
@@ -5537,7 +5603,9 @@
       "quality_band": "S+",
       "sourceUrl": "https://anilist.co/search/anime?search=Monogatari+Series",
       "id": "m:monogatari-series:fd59c043",
-      "aliases": ["monogatari series"],
+      "aliases": [
+        "monogatari series"
+      ],
       "content": {
         "sex": 1,
         "nudity": 1,
@@ -5660,7 +5728,9 @@
       "quality_band": "S",
       "sourceUrl": "https://anilist.co/search/anime?search=Heike+Monogatari",
       "id": "m:heike-monogatari:89d5e0da",
-      "aliases": ["heike story"],
+      "aliases": [
+        "heike story"
+      ],
       "content": {
         "sex": 1,
         "nudity": 1,
@@ -5873,7 +5943,10 @@
         "violence": 5,
         "gore": 5,
         "disturbing": 4,
-        "tags": ["Adult Animation", "Gore"]
+        "tags": [
+          "Adult Animation",
+          "Gore"
+        ]
       },
       "scores": {
         "overall": 100,
@@ -6488,7 +6561,9 @@
         "violence": 5,
         "gore": 0,
         "disturbing": 5,
-        "tags": ["Adult Only"]
+        "tags": [
+          "Adult Only"
+        ]
       },
       "scores": {
         "overall": 94,
@@ -7021,7 +7096,9 @@
         "violence": 4,
         "gore": 0,
         "disturbing": 3,
-        "tags": ["Adult Only"]
+        "tags": [
+          "Adult Only"
+        ]
       },
       "scores": {
         "overall": 94,
@@ -7062,7 +7139,11 @@
         "violence": 5,
         "gore": 5,
         "disturbing": 5,
-        "tags": ["Adult Animation", "Erotic", "Gore"]
+        "tags": [
+          "Adult Animation",
+          "Erotic",
+          "Gore"
+        ]
       },
       "scores": {
         "overall": 94,
@@ -7103,7 +7184,10 @@
         "violence": 5,
         "gore": 5,
         "disturbing": 4,
-        "tags": ["Adult Animation", "Gore"]
+        "tags": [
+          "Adult Animation",
+          "Gore"
+        ]
       },
       "scores": {
         "overall": 94,
@@ -7226,7 +7310,9 @@
         "violence": 5,
         "gore": 4,
         "disturbing": 5,
-        "tags": ["Adult Only"]
+        "tags": [
+          "Adult Only"
+        ]
       },
       "scores": {
         "overall": 94,
@@ -7267,7 +7353,9 @@
         "violence": 5,
         "gore": 0,
         "disturbing": 4,
-        "tags": ["Adult Only"]
+        "tags": [
+          "Adult Only"
+        ]
       },
       "scores": {
         "overall": 94,
@@ -7308,7 +7396,10 @@
         "violence": 5,
         "gore": 5,
         "disturbing": 4,
-        "tags": ["Adult Animation", "Gore"]
+        "tags": [
+          "Adult Animation",
+          "Gore"
+        ]
       },
       "scores": {
         "overall": 94,
@@ -7342,7 +7433,9 @@
       "sourceUrl": "https://anilist.co/search/anime?search=Tu+Bian+Yingxiong+X",
       "quality_band": "S",
       "id": "m:to-be-hero-x:57d50b3b",
-      "aliases": ["to be hero x"],
+      "aliases": [
+        "to be hero x"
+      ],
       "content": {
         "sex": 2,
         "nudity": 3,
@@ -9029,7 +9122,10 @@
         "violence": 3,
         "gore": 1,
         "disturbing": 3,
-        "tags": ["Erotic", "Adult Animation"]
+        "tags": [
+          "Erotic",
+          "Adult Animation"
+        ]
       },
       "scores": {
         "overall": 94,
@@ -10502,7 +10598,11 @@
         "violence": 4,
         "gore": 2,
         "disturbing": 5,
-        "tags": ["Erotic", "Disturbing", "Adult Only"]
+        "tags": [
+          "Erotic",
+          "Disturbing",
+          "Adult Only"
+        ]
       },
       "scores": {
         "overall": 94,
@@ -10667,7 +10767,9 @@
         "violence": 4,
         "gore": 0,
         "disturbing": 4,
-        "tags": ["Adult Only"]
+        "tags": [
+          "Adult Only"
+        ]
       },
       "scores": {
         "overall": 88,
@@ -10708,7 +10810,9 @@
         "violence": 5,
         "gore": 4,
         "disturbing": 5,
-        "tags": ["Adult Only"]
+        "tags": [
+          "Adult Only"
+        ]
       },
       "scores": {
         "overall": 88,
@@ -10749,7 +10853,9 @@
         "violence": 5,
         "gore": 3,
         "disturbing": 4,
-        "tags": ["Adult Only"]
+        "tags": [
+          "Adult Only"
+        ]
       },
       "scores": {
         "overall": 88,
@@ -10954,7 +11060,9 @@
         "violence": 5,
         "gore": 4,
         "disturbing": 5,
-        "tags": ["Adult Only"]
+        "tags": [
+          "Adult Only"
+        ]
       },
       "scores": {
         "overall": 88,
@@ -10995,7 +11103,9 @@
         "violence": 5,
         "gore": 0,
         "disturbing": 4,
-        "tags": ["Adult Only"]
+        "tags": [
+          "Adult Only"
+        ]
       },
       "scores": {
         "overall": 88,
@@ -11036,7 +11146,9 @@
         "violence": 5,
         "gore": 0,
         "disturbing": 5,
-        "tags": ["Adult Only"]
+        "tags": [
+          "Adult Only"
+        ]
       },
       "scores": {
         "overall": 88,
@@ -11077,7 +11189,9 @@
         "violence": 4,
         "gore": 0,
         "disturbing": 3,
-        "tags": ["Adult Only"]
+        "tags": [
+          "Adult Only"
+        ]
       },
       "scores": {
         "overall": 88,
@@ -11118,7 +11232,9 @@
         "violence": 1,
         "gore": 0,
         "disturbing": 1,
-        "tags": ["Adult Only"]
+        "tags": [
+          "Adult Only"
+        ]
       },
       "scores": {
         "overall": 88,
@@ -11159,7 +11275,10 @@
         "violence": 5,
         "gore": 5,
         "disturbing": 4,
-        "tags": ["Adult Animation", "Gore"]
+        "tags": [
+          "Adult Animation",
+          "Gore"
+        ]
       },
       "scores": {
         "overall": 88,
@@ -11241,7 +11360,9 @@
         "violence": 5,
         "gore": 4,
         "disturbing": 5,
-        "tags": ["Adult Only"]
+        "tags": [
+          "Adult Only"
+        ]
       },
       "scores": {
         "overall": 88,
@@ -11282,7 +11403,9 @@
         "violence": 5,
         "gore": 4,
         "disturbing": 5,
-        "tags": ["Adult Only"]
+        "tags": [
+          "Adult Only"
+        ]
       },
       "scores": {
         "overall": 88,
@@ -11323,7 +11446,9 @@
         "violence": 5,
         "gore": 3,
         "disturbing": 4,
-        "tags": ["Adult Only"]
+        "tags": [
+          "Adult Only"
+        ]
       },
       "scores": {
         "overall": 88,
@@ -11446,7 +11571,11 @@
         "violence": 5,
         "gore": 4,
         "disturbing": 3,
-        "tags": ["Ecchi", "Gore", "Adult Only"]
+        "tags": [
+          "Ecchi",
+          "Gore",
+          "Adult Only"
+        ]
       },
       "scores": {
         "overall": 88,
@@ -11521,14 +11650,21 @@
       "sourceUrl": "https://www.tvmaze.com/search?q=Todd+McFarlane%27s+Spawn",
       "quality_band": "A+",
       "id": "m:spawn:6227120a",
-      "aliases": ["todd mcfarlanes spawn", "todd mcfarlane s spawn"],
+      "aliases": [
+        "todd mcfarlanes spawn",
+        "todd mcfarlane s spawn"
+      ],
       "content": {
         "sex": 3,
         "nudity": 3,
         "violence": 5,
         "gore": 5,
         "disturbing": 5,
-        "tags": ["Adult Animation", "Gore", "Disturbing"]
+        "tags": [
+          "Adult Animation",
+          "Gore",
+          "Disturbing"
+        ]
       },
       "scores": {
         "overall": 88,
@@ -11651,7 +11787,10 @@
         "violence": 1,
         "gore": 0,
         "disturbing": 1,
-        "tags": ["Ecchi", "Adult Comedy"]
+        "tags": [
+          "Ecchi",
+          "Adult Comedy"
+        ]
       },
       "scores": {
         "overall": 88,
@@ -11937,7 +12076,9 @@
         "violence": 2,
         "gore": 0,
         "disturbing": 2,
-        "tags": ["Adult Only"]
+        "tags": [
+          "Adult Only"
+        ]
       },
       "scores": {
         "overall": 88,
@@ -12217,7 +12358,9 @@
       "quality_band": "A+",
       "sourceUrl": "https://anilist.co/search/anime?search=Elusive+Samurai",
       "id": "m:elusive-samurai:5fdbc06b",
-      "aliases": ["elusive samurai"],
+      "aliases": [
+        "elusive samurai"
+      ],
       "content": {
         "sex": 1,
         "nudity": 1,
@@ -15359,7 +15502,10 @@
       "quality_band": "A+",
       "sourceUrl": "https://anilist.co/search/anime?search=Kubikiri+Cycle",
       "id": "m:kubikiri-cycle:68ba518f",
-      "aliases": ["kubikiri cycle", "the kubikiri cycle"],
+      "aliases": [
+        "kubikiri cycle",
+        "the kubikiri cycle"
+      ],
       "content": {
         "sex": 1,
         "nudity": 1,
@@ -17164,7 +17310,9 @@
         "violence": 3,
         "gore": 0,
         "disturbing": 2,
-        "tags": ["Adult Only"]
+        "tags": [
+          "Adult Only"
+        ]
       },
       "scores": {
         "overall": 88,
@@ -18350,7 +18498,12 @@
         "violence": 5,
         "gore": 4,
         "disturbing": 4,
-        "tags": ["Hentai", "Erotic", "Adult Only", "Gore"]
+        "tags": [
+          "Hentai",
+          "Erotic",
+          "Adult Only",
+          "Gore"
+        ]
       },
       "scores": {
         "overall": 88,
@@ -18555,7 +18708,9 @@
         "violence": 2,
         "gore": 0,
         "disturbing": 2,
-        "tags": ["Adult Only"]
+        "tags": [
+          "Adult Only"
+        ]
       },
       "scores": {
         "overall": 88,
@@ -18917,7 +19072,10 @@
       "quality_band": "A+",
       "sourceUrl": "https://anilist.co/search/anime?search=Dear+Brother",
       "id": "m:dear-brother:c465e189",
-      "aliases": ["oniisama e", "oniisama e..."],
+      "aliases": [
+        "oniisama e",
+        "oniisama e..."
+      ],
       "content": {
         "sex": 1,
         "nudity": 1,
@@ -19417,7 +19575,9 @@
         "violence": 1,
         "gore": 0,
         "disturbing": 1,
-        "tags": ["Adult Only"]
+        "tags": [
+          "Adult Only"
+        ]
       },
       "scores": {
         "overall": 82,
@@ -19458,7 +19618,9 @@
         "violence": 2,
         "gore": 0,
         "disturbing": 2,
-        "tags": ["Adult Only"]
+        "tags": [
+          "Adult Only"
+        ]
       },
       "scores": {
         "overall": 82,
@@ -19499,7 +19661,9 @@
         "violence": 3,
         "gore": 0,
         "disturbing": 3,
-        "tags": ["Adult Only"]
+        "tags": [
+          "Adult Only"
+        ]
       },
       "scores": {
         "overall": 82,
@@ -19622,7 +19786,9 @@
         "violence": 5,
         "gore": 4,
         "disturbing": 5,
-        "tags": ["Adult Only"]
+        "tags": [
+          "Adult Only"
+        ]
       },
       "scores": {
         "overall": 82,
@@ -19663,7 +19829,9 @@
         "violence": 5,
         "gore": 0,
         "disturbing": 5,
-        "tags": ["Adult Only"]
+        "tags": [
+          "Adult Only"
+        ]
       },
       "scores": {
         "overall": 82,
@@ -19704,7 +19872,9 @@
         "violence": 5,
         "gore": 4,
         "disturbing": 5,
-        "tags": ["Adult Only"]
+        "tags": [
+          "Adult Only"
+        ]
       },
       "scores": {
         "overall": 82,
@@ -19786,7 +19956,9 @@
         "violence": 5,
         "gore": 3,
         "disturbing": 4,
-        "tags": ["Adult Only"]
+        "tags": [
+          "Adult Only"
+        ]
       },
       "scores": {
         "overall": 82,
@@ -19868,7 +20040,9 @@
         "violence": 5,
         "gore": 0,
         "disturbing": 4,
-        "tags": ["Adult Only"]
+        "tags": [
+          "Adult Only"
+        ]
       },
       "scores": {
         "overall": 82,
@@ -19950,7 +20124,9 @@
         "violence": 4,
         "gore": 0,
         "disturbing": 4,
-        "tags": ["Adult Only"]
+        "tags": [
+          "Adult Only"
+        ]
       },
       "scores": {
         "overall": 82,
@@ -20032,7 +20208,9 @@
         "violence": 4,
         "gore": 0,
         "disturbing": 3,
-        "tags": ["Adult Only"]
+        "tags": [
+          "Adult Only"
+        ]
       },
       "scores": {
         "overall": 82,
@@ -20073,7 +20251,9 @@
         "violence": 5,
         "gore": 3,
         "disturbing": 4,
-        "tags": ["Adult Only"]
+        "tags": [
+          "Adult Only"
+        ]
       },
       "scores": {
         "overall": 82,
@@ -20114,7 +20294,11 @@
         "violence": 5,
         "gore": 5,
         "disturbing": 4,
-        "tags": ["Adult Animation", "Erotic", "Gore"]
+        "tags": [
+          "Adult Animation",
+          "Erotic",
+          "Gore"
+        ]
       },
       "scores": {
         "overall": 82,
@@ -20155,7 +20339,9 @@
         "violence": 5,
         "gore": 3,
         "disturbing": 4,
-        "tags": ["Adult Only"]
+        "tags": [
+          "Adult Only"
+        ]
       },
       "scores": {
         "overall": 82,
@@ -20196,7 +20382,9 @@
         "violence": 5,
         "gore": 4,
         "disturbing": 5,
-        "tags": ["Adult Only"]
+        "tags": [
+          "Adult Only"
+        ]
       },
       "scores": {
         "overall": 82,
@@ -20442,7 +20630,9 @@
         "violence": 4,
         "gore": 0,
         "disturbing": 3,
-        "tags": ["Adult Only"]
+        "tags": [
+          "Adult Only"
+        ]
       },
       "scores": {
         "overall": 82,
@@ -20483,7 +20673,9 @@
         "violence": 5,
         "gore": 0,
         "disturbing": 4,
-        "tags": ["Adult Only"]
+        "tags": [
+          "Adult Only"
+        ]
       },
       "scores": {
         "overall": 82,
@@ -20524,7 +20716,11 @@
         "violence": 5,
         "gore": 4,
         "disturbing": 5,
-        "tags": ["Erotic", "Extreme Violence", "Adult Only"]
+        "tags": [
+          "Erotic",
+          "Extreme Violence",
+          "Adult Only"
+        ]
       },
       "scores": {
         "overall": 82,
@@ -20558,7 +20754,9 @@
       "sourceUrl": "https://anilist.co/search/anime?search=Sakamoto+Days",
       "quality_band": "A",
       "id": "m:sakamoto-days:39deb36e",
-      "aliases": ["sakamoto days"],
+      "aliases": [
+        "sakamoto days"
+      ],
       "content": {
         "sex": 1,
         "nudity": 2,
@@ -20647,7 +20845,9 @@
         "violence": 5,
         "gore": 4,
         "disturbing": 5,
-        "tags": ["Adult Only"]
+        "tags": [
+          "Adult Only"
+        ]
       },
       "scores": {
         "overall": 76,
@@ -20688,7 +20888,9 @@
         "violence": 4,
         "gore": 3,
         "disturbing": 4,
-        "tags": ["Adult Only"]
+        "tags": [
+          "Adult Only"
+        ]
       },
       "scores": {
         "overall": 76,
@@ -20811,7 +21013,9 @@
         "violence": 2,
         "gore": 0,
         "disturbing": 2,
-        "tags": ["Adult Only"]
+        "tags": [
+          "Adult Only"
+        ]
       },
       "scores": {
         "overall": 76,
@@ -21303,7 +21507,10 @@
         "violence": 3,
         "gore": 1,
         "disturbing": 2,
-        "tags": ["Ecchi", "Adult Only"]
+        "tags": [
+          "Ecchi",
+          "Adult Only"
+        ]
       },
       "scores": {
         "overall": 82,
@@ -21385,7 +21592,9 @@
         "violence": 2,
         "gore": 0,
         "disturbing": 2,
-        "tags": ["Adult Only"]
+        "tags": [
+          "Adult Only"
+        ]
       },
       "scores": {
         "overall": 76,
@@ -21426,7 +21635,11 @@
         "violence": 1,
         "gore": 0,
         "disturbing": 1,
-        "tags": ["Ecchi", "Erotic", "Adult Only"]
+        "tags": [
+          "Ecchi",
+          "Erotic",
+          "Adult Only"
+        ]
       },
       "scores": {
         "overall": 82,
@@ -21590,7 +21803,12 @@
         "violence": 5,
         "gore": 5,
         "disturbing": 5,
-        "tags": ["Erotic", "Extreme Violence", "Gore", "Adult Only"]
+        "tags": [
+          "Erotic",
+          "Extreme Violence",
+          "Gore",
+          "Adult Only"
+        ]
       },
       "scores": {
         "overall": 82,
@@ -21631,7 +21849,9 @@
         "violence": 5,
         "gore": 4,
         "disturbing": 5,
-        "tags": ["Adult Only"]
+        "tags": [
+          "Adult Only"
+        ]
       },
       "scores": {
         "overall": 76,
@@ -21712,7 +21932,9 @@
         "violence": 3,
         "gore": 0,
         "disturbing": 2,
-        "tags": ["Adult Only"]
+        "tags": [
+          "Adult Only"
+        ]
       },
       "scores": {
         "overall": 82,
@@ -21794,7 +22016,9 @@
         "violence": 2,
         "gore": 0,
         "disturbing": 2,
-        "tags": ["Adult Only"]
+        "tags": [
+          "Adult Only"
+        ]
       },
       "scores": {
         "overall": 82,
@@ -22614,7 +22838,9 @@
         "violence": 2,
         "gore": 0,
         "disturbing": 2,
-        "tags": ["Adult Only"]
+        "tags": [
+          "Adult Only"
+        ]
       },
       "scores": {
         "overall": 82,
@@ -25402,7 +25628,9 @@
         "violence": 3,
         "gore": 0,
         "disturbing": 2,
-        "tags": ["Adult Only"]
+        "tags": [
+          "Adult Only"
+        ]
       },
       "scores": {
         "overall": 82,
@@ -25648,7 +25876,9 @@
         "violence": 2,
         "gore": 0,
         "disturbing": 2,
-        "tags": ["Adult Only"]
+        "tags": [
+          "Adult Only"
+        ]
       },
       "scores": {
         "overall": 82,
@@ -27244,7 +27474,9 @@
         "violence": 3,
         "gore": 0,
         "disturbing": 2,
-        "tags": ["Adult Only"]
+        "tags": [
+          "Adult Only"
+        ]
       },
       "scores": {
         "overall": 82,
@@ -27613,7 +27845,9 @@
         "violence": 2,
         "gore": 0,
         "disturbing": 2,
-        "tags": ["Adult Only"]
+        "tags": [
+          "Adult Only"
+        ]
       },
       "scores": {
         "overall": 82,
@@ -27982,7 +28216,12 @@
         "violence": 5,
         "gore": 3,
         "disturbing": 5,
-        "tags": ["Hentai", "Extreme Violence", "Adult Only", "Disturbing"]
+        "tags": [
+          "Hentai",
+          "Extreme Violence",
+          "Adult Only",
+          "Disturbing"
+        ]
       },
       "scores": {
         "overall": 82,
@@ -28515,7 +28754,12 @@
         "violence": 4,
         "gore": 3,
         "disturbing": 5,
-        "tags": ["Hentai", "Erotic", "Adult Only", "Disturbing"]
+        "tags": [
+          "Hentai",
+          "Erotic",
+          "Adult Only",
+          "Disturbing"
+        ]
       },
       "scores": {
         "overall": 82,
@@ -28556,7 +28800,9 @@
         "violence": 3,
         "gore": 0,
         "disturbing": 2,
-        "tags": ["Adult Only"]
+        "tags": [
+          "Adult Only"
+        ]
       },
       "scores": {
         "overall": 82,
@@ -28843,7 +29089,12 @@
         "violence": 4,
         "gore": 2,
         "disturbing": 5,
-        "tags": ["Hentai", "Erotic", "Adult Only", "Disturbing"]
+        "tags": [
+          "Hentai",
+          "Erotic",
+          "Adult Only",
+          "Disturbing"
+        ]
       },
       "scores": {
         "overall": 82,
@@ -28966,7 +29217,12 @@
         "violence": 1,
         "gore": 0,
         "disturbing": 2,
-        "tags": ["Hentai", "Erotic", "Adult Comedy", "Adult Only"]
+        "tags": [
+          "Hentai",
+          "Erotic",
+          "Adult Comedy",
+          "Adult Only"
+        ]
       },
       "scores": {
         "overall": 82,
@@ -29622,7 +29878,9 @@
         "violence": 3,
         "gore": 0,
         "disturbing": 2,
-        "tags": ["Adult Only"]
+        "tags": [
+          "Adult Only"
+        ]
       },
       "scores": {
         "overall": 82,
@@ -30236,7 +30494,9 @@
         "violence": 5,
         "gore": 0,
         "disturbing": 5,
-        "tags": ["Adult Only"]
+        "tags": [
+          "Adult Only"
+        ]
       },
       "scores": {
         "overall": 76,
@@ -30277,7 +30537,9 @@
         "violence": 5,
         "gore": 0,
         "disturbing": 4,
-        "tags": ["Adult Only"]
+        "tags": [
+          "Adult Only"
+        ]
       },
       "scores": {
         "overall": 76,
@@ -30400,7 +30662,9 @@
         "violence": 5,
         "gore": 0,
         "disturbing": 5,
-        "tags": ["Adult Only"]
+        "tags": [
+          "Adult Only"
+        ]
       },
       "scores": {
         "overall": 76,
@@ -30441,7 +30705,9 @@
         "violence": 4,
         "gore": 0,
         "disturbing": 4,
-        "tags": ["Adult Only"]
+        "tags": [
+          "Adult Only"
+        ]
       },
       "scores": {
         "overall": 76,
@@ -30482,7 +30748,9 @@
         "violence": 5,
         "gore": 0,
         "disturbing": 5,
-        "tags": ["Adult Only"]
+        "tags": [
+          "Adult Only"
+        ]
       },
       "scores": {
         "overall": 76,
@@ -30605,7 +30873,9 @@
         "violence": 5,
         "gore": 4,
         "disturbing": 5,
-        "tags": ["Adult Only"]
+        "tags": [
+          "Adult Only"
+        ]
       },
       "scores": {
         "overall": 76,
@@ -30646,7 +30916,9 @@
         "violence": 5,
         "gore": 4,
         "disturbing": 5,
-        "tags": ["Adult Only"]
+        "tags": [
+          "Adult Only"
+        ]
       },
       "scores": {
         "overall": 76,
@@ -30687,7 +30959,9 @@
         "violence": 5,
         "gore": 0,
         "disturbing": 4,
-        "tags": ["Adult Only"]
+        "tags": [
+          "Adult Only"
+        ]
       },
       "scores": {
         "overall": 76,
@@ -30810,7 +31084,9 @@
         "violence": 5,
         "gore": 4,
         "disturbing": 5,
-        "tags": ["Adult Only"]
+        "tags": [
+          "Adult Only"
+        ]
       },
       "scores": {
         "overall": 76,
@@ -30851,7 +31127,9 @@
         "violence": 5,
         "gore": 4,
         "disturbing": 5,
-        "tags": ["Adult Only"]
+        "tags": [
+          "Adult Only"
+        ]
       },
       "scores": {
         "overall": 76,
@@ -30892,7 +31170,9 @@
         "violence": 5,
         "gore": 4,
         "disturbing": 5,
-        "tags": ["Adult Only"]
+        "tags": [
+          "Adult Only"
+        ]
       },
       "scores": {
         "overall": 76,
@@ -30933,7 +31213,9 @@
         "violence": 5,
         "gore": 4,
         "disturbing": 5,
-        "tags": ["Adult Only"]
+        "tags": [
+          "Adult Only"
+        ]
       },
       "scores": {
         "overall": 76,
@@ -30974,7 +31256,9 @@
         "violence": 5,
         "gore": 4,
         "disturbing": 5,
-        "tags": ["Adult Only"]
+        "tags": [
+          "Adult Only"
+        ]
       },
       "scores": {
         "overall": 76,
@@ -31015,7 +31299,9 @@
         "violence": 5,
         "gore": 4,
         "disturbing": 5,
-        "tags": ["Adult Only"]
+        "tags": [
+          "Adult Only"
+        ]
       },
       "scores": {
         "overall": 76,
@@ -31131,14 +31417,18 @@
       "sourceUrl": "https://anilist.co/search/anime?search=Shinsekai+yori",
       "quality_band": "B+",
       "id": "m:from-new-world:b8c0d67d",
-      "aliases": ["shinsekai yori"],
+      "aliases": [
+        "shinsekai yori"
+      ],
       "content": {
         "sex": 3,
         "nudity": 4,
         "violence": 5,
         "gore": 4,
         "disturbing": 5,
-        "tags": ["Adult Only"]
+        "tags": [
+          "Adult Only"
+        ]
       },
       "scores": {
         "overall": 76,
@@ -31434,6 +31724,45 @@
         "emotional": 7
       },
       "rank": 768
+    },
+    {
+      "id": "t:2061",
+      "title": "Elfen Lied",
+      "type": "Series",
+      "origin": "Japan",
+      "year": 2004,
+      "genres": "Drama, Anime, Horror, Science-Fiction",
+      "api": "anilist",
+      "lookupTitle": "Elfen Lied",
+      "externalId": "226",
+      "provisional": false,
+      "aliases": [],
+      "sourceUrl": "",
+      "caveat": "",
+      "watch_note": "",
+      "scores": {
+        "overall": 78,
+        "production": 8,
+        "story": 7,
+        "emotional": 9
+      },
+      "content": {
+        "sex": 2,
+        "nudity": 4,
+        "violence": 5,
+        "gore": 5,
+        "disturbing": 5,
+        "tags": [
+          "Horror",
+          "Adult Catalog"
+        ]
+      },
+      "fit_score": 78,
+      "production": 8,
+      "story": 7,
+      "tier": "A",
+      "quality_band": "A",
+      "rank": 769
     }
   ],
   "collections": [
@@ -31795,7 +32124,11 @@
       "kind": "Studio",
       "mode": "highlights",
       "description": "The studio most responsible for proving character-driven CG anime can look fantastic.",
-      "items": ["m:land-of-lustrous:828e6c22", "m:beastars:0b3ef13d", "m:trigun-stampede-stargaze:98b66eb3"]
+      "items": [
+        "m:land-of-lustrous:828e6c22",
+        "m:beastars:0b3ef13d",
+        "m:trigun-stampede-stargaze:98b66eb3"
+      ]
     },
     {
       "id": "david",
@@ -32259,7 +32592,11 @@
       "kind": "Western studio",
       "mode": "highlights",
       "description": "Adult serialized animation that ranges from cerebral sci-fi to fantasy comedy and alien ecology.",
-      "items": ["m:legend-of-vox-machina:a0bc8c22", "m:pantheon:f5819289", "m:scavengers-reign:a7bfc8cb"]
+      "items": [
+        "m:legend-of-vox-machina:a0bc8c22",
+        "m:pantheon:f5819289",
+        "m:scavengers-reign:a7bfc8cb"
+      ]
     },
     {
       "id": "fortiche",
@@ -32267,7 +32604,9 @@
       "kind": "French animation studio",
       "mode": "highlights",
       "description": "Painterly 2D/3D hybrid animation and cinematic character acting; the studio that made Arcane a visual benchmark.",
-      "items": ["m:arcane:e7cbd6b1"]
+      "items": [
+        "m:arcane:e7cbd6b1"
+      ]
     },
     {
       "id": "studio-ponoc",
@@ -32275,7 +32614,11 @@
       "kind": "Studio",
       "mode": "highlights",
       "description": "A Ghibli-descended feature studio with lavish hand-drawn fantasy and emotionally direct short-form work.",
-      "items": ["m:imaginary:1519bc46", "m:mary-and-witch-s-flower:ef9d2f19", "m:modest-heroes:e8266d1d"]
+      "items": [
+        "m:imaginary:1519bc46",
+        "m:mary-and-witch-s-flower:ef9d2f19",
+        "m:modest-heroes:e8266d1d"
+      ]
     }
   ],
   "franchises": [
@@ -33675,19 +34018,27 @@
           "steps": [
             {
               "n": "AFTER S1",
-              "title": "Ilse's Notebook / A Sudden Visitor / Distress",
-              "flag": "OPTIONAL"
+              "title": "Attack on Titan OVA",
+              "flag": "OPTIONAL",
+              "note": "Episodes 1-3: Ilse's Notebook / A Sudden Visitor / Distress."
             },
             {
               "n": "AFTER S1",
-              "title": "No Regrets Parts 1-2",
+              "title": "Attack on Titan: No Regrets",
               "flag": "OPTIONAL",
-              "note": "Levi prequel; better once you know him."
+              "note": "Episodes 1-2. Levi prequel; better once you know him."
             },
             {
               "n": "AFTER S2",
-              "title": "Lost Girls Parts 1-3",
-              "flag": "OPTIONAL"
+              "title": "Attack on Titan: Lost Girls",
+              "flag": "OPTIONAL",
+              "note": "Episodes 1-2: Wall Sina, Goodbye."
+            },
+            {
+              "n": "AFTER S3 PART 1",
+              "title": "Attack on Titan: Lost Girls",
+              "flag": "OPTIONAL",
+              "note": "Episode 3: Lost in the Cruel World."
             }
           ]
         }

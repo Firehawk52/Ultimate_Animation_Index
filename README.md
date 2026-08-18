@@ -12,7 +12,7 @@ lists.
 
 There is no title limit. The list can keep growing as new and older work is added.
 
-See the [changelog](CHANGELOG.md) for the full release history and version 2.2.2 details.
+See the [changelog](CHANGELOG.md) for the full release history and version 2.2.3 details.
 
 ## Highlights
 
@@ -22,8 +22,8 @@ See the [changelog](CHANGELOG.md) for the full release history and version 2.2.2
 - **Update notifications:** receive an in-app link when a newer GitHub release is available
 - **Cover-level progress:** distinct status icons show not started, watching, completed,
   on hold and dropped titles without opening their details
-- **Unified episode tracking:** AniList sequels and prequels are grouped into seasons under one series,
-  with the same episode state shown in title details and franchise guides
+- **Unified episode tracking:** AniList sequels, prequels and relevant OVA/ONA/special side stories are grouped
+  under one series, with the same episode state shown in title details and franchise guides
 - **Curated navigation:** rankings, filters, collections and detailed franchise guides
 - **Clear content guidance:** separate severity levels for sexual content, nudity,
   violence, gore and disturbing material
@@ -282,7 +282,8 @@ Keep `data/covers/` when updating the app if you want to preserve downloaded art
 ## Unified season and episode progress
 
 For AniList-backed series, the server follows AniList's official `PREQUEL` and `SEQUEL`
-relations to group separately listed seasons and concluding specials under one catalog title.
+relations, plus `SIDE_STORY` relations when the related title is an OVA, ONA or special,
+to group separately listed seasons and relevant side material under one catalog title.
 Western and other TVMaze-backed shows use the provider's embedded episode list and are
 grouped by season. The integrations follow the [AniList Media relations documentation](https://docs.anilist.co/guide/graphql/queries/media#get-the-relations-of-a-media)
 and the [official TVMaze show and episode API](https://www.tvmaze.com/api#show-episode-list).

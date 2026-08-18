@@ -515,7 +515,7 @@ function normMetaTitle(s = '') {
 
 // Metadata provider adapters
 const ANILIST_FIELDS = `id title{romaji english native} coverImage{extraLarge large} bannerImage seasonYear format status episodes duration genres tags{name rank isMediaSpoiler} averageScore siteUrl description(asHtml:false) isAdult studios(isMain:true){nodes{name}}`;
-const ANILIST_SERIES_FIELDS = `id title{romaji english native} coverImage{extraLarge large} seasonYear startDate{year month day} format status episodes duration siteUrl relations{edges{relationType(version:2) node{id type}}}`;
+const ANILIST_SERIES_FIELDS = `id title{romaji english native} coverImage{extraLarge large} seasonYear startDate{year month day} format status episodes duration siteUrl relations{edges{relationType(version:2) node{id type format}}}`;
 
 function contentLabels(labels = []) {
   const relevant =
@@ -639,7 +639,7 @@ async function fetchAniList(query, variables) {
 
 export function fromAniListSeriesMedia(media) {
   if (!media?.id) return null;
-  const onePart = ['MOVIE', 'SPECIAL', 'OVA'].includes(media.format);
+  const onePart = ['MOVIE', 'SPECIAL', 'OVA', 'ONA'].includes(media.format);
   return {
     id: String(media.id),
     provider: 'anilist',
@@ -656,7 +656,14 @@ export function fromAniListSeriesMedia(media) {
     cover: media.coverImage?.extraLarge || media.coverImage?.large || '',
     siteUrl: media.siteUrl || '',
     relations: (media.relations?.edges || [])
-      .filter((edge) => edge?.node?.type === 'ANIME' && ['PREQUEL', 'SEQUEL'].includes(edge.relationType))
+      .filter((edge) => {
+        if (edge?.node?.type !== 'ANIME') return false;
+        if (['PREQUEL', 'SEQUEL'].includes(edge.relationType)) return true;
+        return (
+          edge.relationType === 'SIDE_STORY' &&
+          ['OVA', 'ONA', 'SPECIAL'].includes(edge.node.format)
+        );
+      })
       .map((edge) => ({ id: String(edge.node.id), type: edge.relationType })),
   };
 }
@@ -683,7 +690,7 @@ async function fetchAniListSeriesNodes(ids) {
 }
 
 async function getAniListSeries(title) {
-  const key = `series:anilist:${normMetaTitle(title)}`;
+  const key = `series:anilist:v2:${normMetaTitle(title)}`;
   const cached = metadataCache[key];
   // Finished and cancelled series are immutable locally. Active AniList series
   // deliberately bypass the cache so new episodes and sequel relations appear
