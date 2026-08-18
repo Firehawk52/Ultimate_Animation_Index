@@ -2,6 +2,7 @@
 .cache/
 node_modules/
 covers/
+data/covers/
 public/catalog.json
 data/catalog-source.json.next
 .DS_Store

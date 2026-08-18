@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-labelledby="title">
+  <title id="title">Ultimate Animation Index</title>
+  <rect width="64" height="64" rx="8" fill="#08090d"/>
+  <path d="M7 8h50v48H7z" fill="none" stroke="#343b49" stroke-width="2"/>
+  <path d="M18 17v20c0 7 3 10 9 10s9-3 9-10V17" fill="none" stroke="#75d9ed" stroke-width="6"/>
+  <path d="M46 15 31 49" stroke="#e85370" stroke-width="6"/>
+</svg>

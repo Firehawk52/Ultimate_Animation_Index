@@ -1,9 +1,19 @@
 import http from 'node:http';
 import { spawn } from 'node:child_process';
 import { readFile, writeFile, mkdir, stat, rename } from 'node:fs/promises';
-import { existsSync, readFileSync, writeFileSync, mkdirSync, readdirSync } from 'node:fs';
-import { extname, join, normalize, resolve } from 'node:path';
+import {
+  copyFileSync,
+  existsSync,
+  readFileSync,
+  writeFileSync,
+  mkdirSync,
+  readdirSync,
+  renameSync,
+  statSync,
+} from 'node:fs';
+import { dirname, extname, isAbsolute, join, normalize, relative, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { parsePort } from '../scripts/runtime.js';
 import {
   generateKeyPairSync,
   randomBytes,
@@ -12,34 +22,64 @@ import {
   verify as cryptoVerify,
   createPublicKey,
 } from 'node:crypto';
-import { buildCatalog, validateCatalog } from './scripts/build-catalog.mjs';
+import { buildCatalog, validateCatalog } from '../scripts/build-catalog.js';
 import {
   applyCorrectionPackage,
   parseCorrectionCode,
   validateCorrectionPackage,
-} from './scripts/catalog-corrections.mjs';
+} from '../scripts/catalog-corrections.js';
 
 // Runtime paths and resource limits
 const __dirname = fileURLToPath(new URL('.', import.meta.url));
-const PUBLIC = join(__dirname, 'public');
-const PRIVATE = join(__dirname, '.userlist-keys');
-const CACHE_DIR = join(__dirname, '.cache');
-const COVER_DIR = join(__dirname, 'covers');
-const CATALOG_SOURCE = join(__dirname, 'data', 'catalog-source.json');
-const PORT = Number(process.env.PORT || 8787);
+const ROOT = dirname(__dirname);
+const PUBLIC = join(ROOT, 'public');
+const PRIVATE = join(ROOT, '.userlist-keys');
+const CACHE_DIR = join(ROOT, '.cache');
+const DATA_DIR = join(ROOT, 'data');
+const LEGACY_COVER_DIR = join(ROOT, 'covers');
+const CATALOG_SOURCE = join(DATA_DIR, 'catalog-source.json');
+const PORT = parsePort(process.env.PORT);
+const HOST = process.env.UAI_HOST || '127.0.0.1';
 const USERLIST_SCHEMA = 3;
 const MAX_BODY = 1024 * 1024;
 const META_TTL = 1000 * 60 * 60 * 24 * 30;
 const MAX_COVER_BYTES = 10 * 1024 * 1024;
-const PACKAGE_VERSION = JSON.parse(readFileSync(join(__dirname, 'package.json'), 'utf8')).version;
+const PACKAGE_VERSION = JSON.parse(readFileSync(join(ROOT, 'package.json'), 'utf8')).version;
 const LATEST_RELEASE_API = 'https://api.github.com/repos/Firehawk52/ultimate-animation-index/releases/latest';
 const RELEASE_BASE_URL = 'https://github.com/Firehawk52/ultimate-animation-index/releases/tag/';
 const RELEASE_TTL = 1000 * 60 * 60;
+const TRUST_DOCKER_CLIENT = process.env.UAI_TRUST_DOCKER_CLIENT === '1';
+const UPDATE_SUPPORTED = existsSync(join(ROOT, '.git'));
 const UPDATE_TOKEN = randomBytes(24).toString('base64url');
 let updateRunning = false;
 
 mkdirSync(PRIVATE, { recursive: true });
 mkdirSync(CACHE_DIR, { recursive: true });
+mkdirSync(DATA_DIR, { recursive: true });
+let coverDirectory = join(DATA_DIR, 'covers');
+if (existsSync(LEGACY_COVER_DIR) && !existsSync(coverDirectory)) {
+  try {
+    renameSync(LEGACY_COVER_DIR, coverDirectory);
+    console.log('Moved the cover cache from covers/ to data/covers/.');
+  } catch {}
+}
+mkdirSync(coverDirectory, { recursive: true });
+if (existsSync(LEGACY_COVER_DIR)) {
+  try {
+    let copied = 0;
+    for (const name of readdirSync(LEGACY_COVER_DIR)) {
+      const source = join(LEGACY_COVER_DIR, name);
+      const destination = join(coverDirectory, name);
+      if (!statSync(source).isFile() || existsSync(destination)) continue;
+      copyFileSync(source, destination);
+      copied += 1;
+    }
+    if (copied) console.log(`Copied ${copied} legacy covers into data/covers/.`);
+  } catch (error) {
+    console.warn(`Could not copy every legacy cover: ${error.message}`);
+  }
+}
+const COVER_DIR = coverDirectory;
 mkdirSync(COVER_DIR, { recursive: true });
 
 // Installation-specific UserList signing identity
@@ -67,7 +107,7 @@ function persistCacheSoon() {
   clearTimeout(cacheTimer);
   cacheTimer = setTimeout(() => {
     try {
-      writeFileSync(cachePath, JSON.stringify(metadataCache));
+      writeFileSync(cachePath, `${JSON.stringify(metadataCache, null, 2)}\n`);
     } catch {}
   }, 500);
 }
@@ -141,6 +181,10 @@ function isLoopbackRequest(req) {
   return address === '127.0.0.1' || address === '::1' || address === '::ffff:127.0.0.1';
 }
 
+function isTrustedLocalRequest(req) {
+  return isLoopbackRequest(req) || TRUST_DOCKER_CLIENT;
+}
+
 async function readCatalogSource() {
   const catalog = JSON.parse(await readFile(CATALOG_SOURCE, 'utf8'));
   return validateCatalog(catalog);
@@ -159,15 +203,17 @@ async function applyCatalogCorrectionCode(code) {
 }
 
 function restartServerAfterUpdate() {
-  const helper = spawn(process.execPath, [join(__dirname, 'scripts', 'restart-after-update.mjs')], {
-    cwd: __dirname,
-    detached: true,
-    env: process.env,
-    stdio: 'ignore',
-    windowsHide: true,
+  server.close(() => {
+    const replacement = spawn(process.execPath, [join(ROOT, 'scripts', 'start.js')], {
+      cwd: ROOT,
+      detached: true,
+      env: process.env,
+      stdio: 'ignore',
+      windowsHide: true,
+    });
+    replacement.unref();
+    process.exit(0);
   });
-  helper.unref();
-  server.close(() => process.exit(0));
   setTimeout(() => server.closeAllConnections?.(), 180).unref();
 }
 
@@ -1143,7 +1189,9 @@ async function serveStatic(req, res, pathName) {
       : decodeURIComponent(pathName).replace(/^\/+/, '');
   const file = resolve(base, normalize(rel));
   const root = resolve(base);
-  if (!file.startsWith(root)) return send(res, 403, { error: 'forbidden' });
+  const pathFromRoot = relative(root, file);
+  if (pathFromRoot.startsWith('..') || isAbsolute(pathFromRoot))
+    return send(res, 403, { error: 'forbidden' });
   try {
     const st = await stat(file);
     if (!st.isFile()) throw new Error('not-file');
@@ -1189,14 +1237,15 @@ export const server = http.createServer(async (req, res) => {
         });
       }
     }
-    if (u.pathname === '/api/health')
+    if (u.pathname === '/api/health') {
+      const isLocal = isTrustedLocalRequest(req);
       return send(res, 200, {
         ok: true,
         format: 'UWL',
         version: PACKAGE_VERSION,
-        updateToken: UPDATE_TOKEN,
-        catalogWriteEnabled: isLoopbackRequest(req),
-        catalogToken: isLoopbackRequest(req) ? UPDATE_TOKEN : '',
+        updateToken: isLocal && UPDATE_SUPPORTED ? UPDATE_TOKEN : '',
+        catalogWriteEnabled: isLocal,
+        catalogToken: isLocal ? UPDATE_TOKEN : '',
         userListSchema: USERLIST_SCHEMA,
         keyId: KEY_ID,
         artwork: warmState,
@@ -1207,6 +1256,7 @@ export const server = http.createServer(async (req, res) => {
           processed: warmState.done,
         },
       });
+    }
     if (u.pathname === '/api/catalog/corrections/preview' && req.method === 'POST') {
       const body = await readBody(req);
       if (!exactKeys(body, new Set(['code'])) || typeof body.code !== 'string')
@@ -1217,7 +1267,7 @@ export const server = http.createServer(async (req, res) => {
     }
     if (u.pathname === '/api/catalog/corrections/apply' && req.method === 'POST') {
       if (
-        !isLoopbackRequest(req) ||
+        !isTrustedLocalRequest(req) ||
         !isSameOriginRequest(req) ||
         req.headers['x-uai-catalog-token'] !== UPDATE_TOKEN
       )
@@ -1233,12 +1283,17 @@ export const server = http.createServer(async (req, res) => {
       });
     }
     if (u.pathname === '/api/update' && req.method === 'POST') {
-      if (!isSameOriginRequest(req) || req.headers['x-uai-update-token'] !== UPDATE_TOKEN)
+      if (
+        !UPDATE_SUPPORTED ||
+        !isTrustedLocalRequest(req) ||
+        !isSameOriginRequest(req) ||
+        req.headers['x-uai-update-token'] !== UPDATE_TOKEN
+      )
         return send(res, 403, { ok: false, error: 'update-forbidden' });
       if (updateRunning) return send(res, 409, { ok: false, error: 'update-running' });
       updateRunning = true;
       try {
-        const { updateInstallation } = await import('./scripts/update.mjs');
+        const { updateInstallation } = await import('../scripts/update.js');
         await updateInstallation({ checkRunningServer: false });
         send(res, 200, { ok: true, restart: true });
         setTimeout(restartServerAfterUpdate, 240).unref();
@@ -1342,8 +1397,8 @@ export const server = http.createServer(async (req, res) => {
   }
 });
 // Exported separately so integration tests can bind to an ephemeral port.
-export function startServer(port = PORT) {
-  return server.listen(port, () => {
+export function startServer(port = PORT, host = HOST) {
+  return server.listen(port, host, () => {
     const address = server.address();
     const activePort = typeof address === 'object' && address ? address.port : port;
     console.log(`Ultimate Animation Index on http://localhost:${activePort} · UserList key ${KEY_ID}`);

@@ -2,11 +2,14 @@ services:
   ultimate-animation-index:
     build: .
     ports:
-      - '8787:8787'
+      - '127.0.0.1:8787:8787'
     environment:
       PORT: 8787
+      UAI_HOST: 0.0.0.0
+      UAI_TRUST_DOCKER_CLIENT: 1
     volumes:
       - ./.userlist-keys:/app/.userlist-keys
       - ./.cache:/app/.cache
-      - ./covers:/app/covers
+      - ./data/covers:/app/data/covers
+      - ./covers:/app/covers:ro
     restart: unless-stopped

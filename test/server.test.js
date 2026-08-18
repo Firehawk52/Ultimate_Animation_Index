@@ -1,9 +1,15 @@
 import assert from 'node:assert/strict';
+import { execFile } from 'node:child_process';
 import { createHash, generateKeyPairSync, sign as cryptoSign } from 'node:crypto';
+import { createServer } from 'node:http';
+import { fileURLToPath } from 'node:url';
+import { promisify } from 'node:util';
 import { after, before, test } from 'node:test';
-import { catalogSnapshot } from '../scripts/catalog-corrections.mjs';
+import { catalogSnapshot } from '../scripts/catalog-corrections.js';
 
 process.env.UAI_SKIP_WARM = '1';
+const execFileAsync = promisify(execFile);
+const root = fileURLToPath(new URL('..', import.meta.url));
 
 const {
   anilistSeriesNeedsRefresh,
@@ -14,7 +20,7 @@ const {
   server,
   startServer,
   tvMazeSeriesNeedsRefresh,
-} = await import('../server.mjs');
+} = await import('../src/server.js');
 let baseUrl;
 
 before(async () => {
@@ -26,6 +32,7 @@ before(async () => {
 
   const address = server.address();
   assert.equal(typeof address, 'object');
+  assert.equal(address.address, '127.0.0.1');
   baseUrl = `http://127.0.0.1:${address.port}`;
 });
 
@@ -48,6 +55,47 @@ test('health endpoint reports a ready signing service', async () => {
   assert.match(body.catalogToken, /^[A-Za-z0-9_-]{32}$/);
   assert.equal(body.userListSchema, 3);
   assert.match(body.keyId, /^[a-f0-9]{16}$/);
+});
+
+test('startup exits cleanly when this app already owns the port', async () => {
+  const port = new URL(baseUrl).port;
+  const { stdout, stderr } = await execFileAsync(process.execPath, ['scripts/start.js'], {
+    cwd: root,
+    env: { ...process.env, PORT: port, UAI_SKIP_WARM: '1' },
+  });
+
+  assert.match(stdout, new RegExp(`already running at http://localhost:${port}`));
+  assert.equal(stderr, '');
+});
+
+test('startup explains when another application owns the port', async () => {
+  const occupiedServer = createServer((_request, response) => {
+    response.writeHead(200, { 'Content-Type': 'application/json' });
+    response.end(JSON.stringify({ ok: true }));
+  });
+  await new Promise((resolve, reject) => {
+    occupiedServer.listen(0, '127.0.0.1', resolve);
+    occupiedServer.once('error', reject);
+  });
+
+  try {
+    const address = occupiedServer.address();
+    assert.equal(typeof address, 'object');
+    await assert.rejects(
+      execFileAsync(process.execPath, ['scripts/start.js'], {
+        cwd: root,
+        env: { ...process.env, PORT: String(address.port), UAI_SKIP_WARM: '1' },
+      }),
+      (error) => {
+        assert.match(error.stderr, new RegExp(`Port ${address.port} is already used`));
+        return true;
+      },
+    );
+  } finally {
+    await new Promise((resolve, reject) =>
+      occupiedServer.close((error) => (error ? reject(error) : resolve())),
+    );
+  }
 });
 
 test('update endpoint rejects requests without its same-origin token', async () => {
@@ -78,6 +126,18 @@ test('home page is served with security headers', async () => {
   assert.equal(response.status, 200);
   assert.match(response.headers.get('content-security-policy') ?? '', /default-src/);
   assert.match(html, /Ultimate Animation Index/);
+  assert.match(html, /class="skip-link" href="#mainContent"/);
+  assert.match(html, /data-tab="master"[^>]*aria-current="page"/);
+  assert.match(html, /rel="icon" href="icon\.svg"/);
+
+  const iconResponse = await fetch(`${baseUrl}/icon.svg`);
+  assert.equal(iconResponse.status, 200);
+  assert.equal(iconResponse.headers.get('content-type'), 'image/svg+xml');
+});
+
+test('static files cannot escape their public root', async () => {
+  const response = await fetch(`${baseUrl}/..%2Fpackage.json`);
+  assert.equal(response.status, 403);
 });
 
 test('readable catalog JSON is served to the browser', async () => {

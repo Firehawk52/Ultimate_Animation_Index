@@ -3,8 +3,7 @@
 .cache
 .userlist-keys
 covers
+data/covers
 node_modules
-__pycache__
-*.pyc
 *.log
 public/catalog.json

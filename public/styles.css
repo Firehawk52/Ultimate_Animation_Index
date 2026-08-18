@@ -79,6 +79,24 @@ body:after {
   background: radial-gradient(circle, rgba(255, 61, 110, 0.09), transparent 65%);
   pointer-events: none;
 }
+.skip-link {
+  position: fixed;
+  z-index: 10000;
+  top: 10px;
+  left: 10px;
+  padding: 10px 14px;
+  border: 1px solid var(--cyan);
+  background: #08090d;
+  color: #fff;
+  font: 800 13px var(--body);
+  letter-spacing: 0.08em;
+  text-decoration: none;
+  transform: translateY(-160%);
+  transition: transform 120ms ease;
+}
+.skip-link:focus {
+  transform: translateY(0);
+}
 .topbar {
   height: 68px;
   position: sticky;
@@ -647,6 +665,16 @@ body:after {
   overflow: hidden;
   clip-path: polygon(0 0, 94% 0, 100% 4%, 100% 100%, 0 100%);
 }
+.card-open {
+  position: absolute;
+  z-index: 1;
+  inset: 0;
+  border: 0;
+  background: transparent;
+}
+.card-open:focus-visible {
+  outline-offset: -4px;
+}
 .title-card:hover {
   transform: translateY(-4px);
   border-color: #596273;
@@ -828,9 +856,12 @@ body:after {
   transform: translateY(-1px);
 }
 .favorite-toggle.active {
-  background: var(--hot);
+  background: #1a0f16;
   border-color: var(--hot);
-  color: #fff;
+  color: #ff89a4;
+  box-shadow:
+    inset 0 0 0 1px rgb(232 83 112 / 24%),
+    0 0 16px rgb(232 83 112 / 18%);
 }
 .card-body {
   padding: 12px;
@@ -1060,6 +1091,9 @@ body:after {
   position: relative;
   overflow: hidden;
   transition: 0.18s;
+  color: var(--ink);
+  font: inherit;
+  text-align: left;
 }
 .collection-card:after {
   content: '';
@@ -1824,7 +1858,8 @@ body:after {
   padding: 16px;
   background: #10131a;
 }
-.user-edit label {
+.user-edit label,
+.user-edit-label {
   font: 700 9px var(--body);
   letter-spacing: 0.12em;
   color: var(--muted);

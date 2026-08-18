@@ -2,6 +2,39 @@
 
 All notable changes to Ultimate Animation Index are documented here.
 
+## Unreleased
+
+## [2.2.0] - 2026-08-18
+
+### Runtime and update reliability
+
+- Fixed automatic updates occasionally starting the replacement server before port 8787 was released.
+- Made startup reuse an already running Ultimate Animation Index server and report unrelated port conflicts clearly.
+- Required the full UAI health signature before treating a service on the configured port as an existing app instance.
+- Standardized active Node.js modules on the `.js` extension, moved the server to `src/` and lowercased update launchers.
+- Retained a small legacy `.mjs` restart bridge so one-click upgrades from version 2.1.0 remain compatible.
+- Moved downloaded artwork to `data/covers/` with automatic migration from the legacy folder.
+- Made the metadata cache human-readable and corrected stale launcher instructions.
+- Bound native servers to loopback by default and stopped exposing write/update tokens to remote clients.
+- Preserved legacy Docker cover caches, added a container health check and verified container builds in CI.
+- Added clear Node, npm, Git and port validation across platform launchers.
+- Aligned runtime and development tooling on maintained Node.js releases with precise startup errors.
+
+### Release engineering and project governance
+
+- Expanded CI to Node.js 20 and 22 on Linux, Windows and macOS, including executable-launcher checks.
+- Added one stable protected-branch gate that aggregates every matrix test and the container build.
+- Added structured bug, feature and pull-request templates plus monthly dependency update checks.
+- Added a repository-wide CODEOWNERS rule so contribution reviews reach the maintainer automatically.
+- Added an explicit MIT source-code license while keeping third-party media outside its scope.
+
+### Interface and accessibility
+
+- Added an original browser-tab icon, keyboard content shortcut and assistive active-navigation state.
+- Added HTML semantic validation to local verification and CI, then resolved its actionable findings.
+- Replaced implicit keyboard behavior on title and collection cards with explicit accessible buttons.
+- Made the active cover heart itself visibly pink across every catalog tab.
+
 ## [2.1.0] - 2026-08-18
 
 ### Community catalog corrections

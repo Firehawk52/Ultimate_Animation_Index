@@ -1,0 +1,5 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Report a vulnerability privately
+    url: https://github.com/Firehawk52/ultimate-animation-index/security/advisories/new
+    about: Send security details directly to the maintainer without opening a public issue.

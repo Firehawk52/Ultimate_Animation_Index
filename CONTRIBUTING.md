@@ -4,8 +4,8 @@ Thanks for helping improve the Ultimate Animation Index.
 
 ## Before making a change
 
-1. Install Node.js 20 or newer.
-2. Run `npm install` once to install the formatter.
+1. Install Node.js 20.19+, 22.16+, or 24+.
+2. Run `npm ci` once to install the exact development tools from the lockfile.
 3. Keep the change focused. Avoid committing local covers, metadata caches or
    UserList signing keys.
 
@@ -42,8 +42,7 @@ Before opening a pull request, run:
 
 ```bash
 npm run format
-npm run check
-npm test
+npm run verify
 ```
 
 `npm test` rebuilds the catalog before running the integration tests.
@@ -52,4 +51,5 @@ npm test
 
 Describe the user-visible outcome, note any data migrations or compatibility risks,
 and include screenshots for visual changes. Never include `public/catalog.json` or
-files from `.userlist-keys/`, `.cache/`, `covers/` or `node_modules/`.
+files from `.userlist-keys/`, `.cache/`, `data/covers/`, the legacy `covers/` folder or
+`node_modules/`.

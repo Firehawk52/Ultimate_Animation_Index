@@ -1,8 +1,9 @@
 # Ultimate Animation Index
 
 [![CI](https://github.com/Firehawk52/ultimate-animation-index/actions/workflows/ci.yml/badge.svg)](https://github.com/Firehawk52/ultimate-animation-index/actions/workflows/ci.yml)
-![Node.js 20+](https://img.shields.io/badge/Node.js-20%2B-5FA04E?logo=nodedotjs&logoColor=white)
+![Node.js LTS](https://img.shields.io/badge/Node.js-supported%20LTS-5FA04E?logo=nodedotjs&logoColor=white)
 ![Self-hosted](https://img.shields.io/badge/deployment-self--hosted-7C5CFC)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
 A private-by-default, self-hosted watchlist for anime and animation from every era,
 genre and country. Browse a ranked catalog, track what you watch, build favorites,
@@ -11,7 +12,7 @@ lists.
 
 There is no title limit. The list can keep growing as new and older work is added.
 
-See the [changelog](CHANGELOG.md) for the full release history and version 2.1 details.
+See the [changelog](CHANGELOG.md) for the full release history and version 2.2 details.
 
 ## Highlights
 
@@ -73,7 +74,7 @@ episode jumps and explicit `ESSENTIAL`, `OPTIONAL` or `SKIP` decisions.
 
 ## Quick start
 
-Install [Node.js 20+](https://nodejs.org/), then run:
+Install a [supported Node.js LTS release](https://nodejs.org/) (20.19+, 22.16+, or 24+), then run:
 
 ```bash
 git clone https://github.com/Firehawk52/ultimate-animation-index.git
@@ -106,9 +107,9 @@ public/catalog.json ──► Browser application ──► Local watch data
 ```
 
 `npm start` generates the catalog when it is missing or its version-controlled source
-has changed. The Node.js server then serves the browser application, validates signed
-UserLists, enriches titles with public metadata and gradually fills the local artwork
-cache.
+has changed. The Node.js server then serves the browser application on the local
+computer only, validates signed UserLists, enriches titles with public metadata and
+gradually fills the local artwork cache.
 
 ## Project structure
 
@@ -117,7 +118,7 @@ cache.
 ├── data/                 # Human-maintained catalog source
 ├── public/               # Browser application; catalog.json is generated locally
 ├── scripts/              # Cross-platform build and startup helpers
-├── server.mjs            # Static server, metadata cache and UserList API
+├── src/                  # Static server, metadata cache and local API
 ├── test/                 # Node.js integration tests
 └── .github/workflows/    # Automated GitHub checks
 ```
@@ -131,7 +132,7 @@ caches, signing keys and installed packages are intentionally excluded from Git.
 | Generated locally     | Purpose                                |
 | --------------------- | -------------------------------------- |
 | `public/catalog.json` | Browser-ready catalog                  |
-| `covers/`             | Downloaded artwork                     |
+| `data/covers/`        | Downloaded artwork                     |
 | `.cache/`             | Provider metadata cache                |
 | `.userlist-keys/`     | Installation-specific signing identity |
 | `node_modules/`       | Development tooling                    |
@@ -140,14 +141,14 @@ caches, signing keys and installed packages are intentionally excluded from Git.
 
 ### Windows
 
-1. Install Node.js 20 or newer.
+1. Install Node.js 20.19+, 22.16+, or 24+.
 2. Double-click `start.bat`.
 3. Your default browser opens automatically when the server is ready.
 4. Keep the terminal window open while you use the site.
 
 ### macOS
 
-1. Install Node.js 20 or newer.
+1. Install Node.js 20.19+, 22.16+, or 24+.
 2. Double-click `start.command`.
 3. Your default browser opens automatically when the server is ready.
 
@@ -175,12 +176,12 @@ npm start
 
 Requirements:
 
-- Node.js 20 or newer
+- Node.js 20.19+, 22.16+, or 24+
 
 Install the development formatter and run the project checks:
 
 ```bash
-npm install
+npm ci
 npm run format:check
 npm run check
 npm test
@@ -195,10 +196,35 @@ Useful commands:
 | `npm run build:catalog` | Validate the source and regenerate `public/catalog.json` |
 | `npm run format`        | Format the human-maintained web and documentation files  |
 | `npm run check`         | Check JavaScript syntax                                  |
+| `npm run check:html`    | Validate HTML semantics and accessibility basics         |
 | `npm test`              | Run server integration tests                             |
+| `npm run verify`        | Run formatting, syntax and integration release checks    |
 
 Pull requests run the same checks through GitHub Actions. The workflow builds and
-tests the catalog without adding the generated file to Git.
+tests the catalog on Node.js 20 and 22 across Linux, Windows and macOS without adding
+the generated file to Git. It also verifies a clean Docker image build.
+
+### Docker
+
+Start the containerized version with:
+
+```bash
+docker compose up --build
+```
+
+Open [http://localhost:8787](http://localhost:8787). Signing keys, metadata and covers
+are stored in host-mounted runtime folders and survive container replacement. The
+temporary read-only `covers/` mount lets existing Docker installations copy legacy
+artwork into `data/covers/` without losing their cache.
+
+### Address and port
+
+Native starts bind to `127.0.0.1` by default, so the private application is not exposed
+to the local network. Set `PORT` to use another port. Containers explicitly use
+`UAI_HOST=0.0.0.0` internally but publish it only on the host's loopback address. The
+Compose file explicitly trusts that Docker bridge for local catalog edits. One-click
+source updates appear only in a Git clone; release archives and containers link to the
+release page instead.
 
 ## What is included
 
@@ -215,7 +241,7 @@ tests the catalog without adding the generated file to Git.
 - Signed UserList sharing by text code
 - Custom title additions with global duplicate checking
 - Editable catalog ratings and portable correction-review packages
-- Local cover storage in `covers/`
+- Local cover storage in `data/covers/`
 
 ## Covers and metadata
 
@@ -238,12 +264,12 @@ compatible between formats.
 When a cover is found, the server downloads it once and stores it locally in:
 
 ```text
-covers/
+data/covers/
 ```
 
 Normal page views then use the local file. The site does not need to download the same cover again every time it opens.
 
-The server also warms the cover cache in the background after startup. The browser does not need to remain open for that process; keep the local server running and it will continue filling the `covers/` folder.
+The server also warms the cover cache in the background after startup. The browser does not need to remain open for that process; keep the local server running and it will continue filling the `data/covers/` folder.
 
 Metadata lookup results are stored in:
 
@@ -251,7 +277,7 @@ Metadata lookup results are stored in:
 .cache/metadata.json
 ```
 
-Keep `covers/` when updating the app if you want to preserve downloaded artwork.
+Keep `data/covers/` when updating the app if you want to preserve downloaded artwork. Existing installations automatically move a legacy `covers/` folder on first start.
 
 ## Unified season and episode progress
 
@@ -361,7 +387,7 @@ Keep this folder when updating the same installation so its public fingerprint r
 
 Never share the private key file.
 
-Runtime data in `.userlist-keys/`, `.cache/` and `covers/` is intentionally excluded
+Runtime data in `.userlist-keys/`, `.cache/` and `data/covers/` is intentionally excluded
 from Git. Do not force-add these folders: signing keys are private and cached metadata
 or artwork can be regenerated.
 
@@ -384,6 +410,12 @@ not covered by any license that may apply to the project's own source code.
 
 Operators and contributors are responsible for ensuring that their use and distribution
 of third-party material complies with applicable licenses, provider terms and local law.
+
+## License
+
+Ultimate Animation Index source code is available under the [MIT License](LICENSE).
+Third-party names, metadata, artwork and other referenced media are not covered by that
+license and remain subject to their respective owners' rights and provider terms.
 
 ## Duplicate handling
 
@@ -429,8 +461,8 @@ the catalog, restarts itself in the background and refreshes the page automatica
 
 The same update can be started without the browser:
 
-- Windows: close the running server and double-click `UPDATE.bat`
-- macOS: close the running server and double-click `UPDATE.command`
+- Windows: close the running server and double-click `update.bat`
+- macOS: close the running server and double-click `update.command`
 - Linux: close the running server and run `./update.sh`
 - Any platform: close the running server and run `npm run update`
 
@@ -441,6 +473,6 @@ or stash their work and update manually when branches have diverged.
 Updates preserve private runtime data:
 
 1. Keep `.userlist-keys/`.
-2. Keep `covers/` if you want to retain downloaded covers.
+2. Keep `data/covers/` if you want to retain downloaded covers.
 3. Keep `.cache/` if you want to retain provider metadata.
 4. Browser watch data remains in the same browser storage.

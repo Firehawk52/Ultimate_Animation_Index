@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
-import { validateUpdateState } from '../scripts/update.mjs';
+import { validateUpdateState } from '../scripts/update.js';
 
 test('updater accepts a clean main Git checkout', () => {
   assert.doesNotThrow(() => validateUpdateState({ insideWorkTree: 'true', branch: 'main', changes: '' }));

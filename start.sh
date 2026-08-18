@@ -3,9 +3,13 @@ set -eu
 cd "$(dirname "$0")"
 URL="http://localhost:${PORT:-8787}"
 if ! command -v node >/dev/null 2>&1; then
-  printf '\nUltimate Animation Index needs Node.js 20 or newer.\nInstall Node.js, then run this file again.\n\n' >&2
+  printf '\nUltimate Animation Index needs Node.js 20.19+, 22.16+, or 24+.\nInstall a supported Node.js LTS release, then run this file again.\n\n' >&2
   printf 'Press Return to close...'
   read _ || true
+  exit 1
+fi
+if ! command -v npm >/dev/null 2>&1; then
+  printf '\nnpm was not found. Repair or reinstall Node.js, then try again.\n\n' >&2
   exit 1
 fi
 (

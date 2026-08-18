@@ -10,15 +10,17 @@
       name="description"
       content="A ranked animation watchlist covering anime, films, donghua and stylized animation from around the world."
     />
+    <link rel="icon" href="icon.svg" type="image/svg+xml" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
       href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:ital,wght@0,600;0,700;0,800;1,700&family=Space+Grotesk:wght@400;500;600;700&display=swap"
       rel="stylesheet"
     />
-    <link rel="stylesheet" href="styles.css?v=2.1.0" />
+    <link rel="stylesheet" href="styles.css?v=2.2.0" />
   </head>
   <body>
+    <a class="skip-link" href="#mainContent">Skip to content</a>
     <div class="noise"></div>
     <header class="topbar">
       <a class="brand" href="#" aria-label="Ultimate Animation Index home">
@@ -28,10 +30,10 @@
       <div class="topline">
         <span>ANIME &amp; ANIMATION</span><span>FILMS &amp; SERIES</span><span>WATCH ORDERS</span>
       </div>
-      <button id="quickAddBtn" class="slash-button small">+ ADD TITLE</button>
+      <button id="quickAddBtn" class="slash-button small" type="button">+ ADD TITLE</button>
     </header>
 
-    <aside id="updateNotice" class="update-notice" aria-live="polite" hidden>
+    <aside id="updateNotice" class="update-notice" aria-label="Software update" aria-live="polite" hidden>
       <div class="update-notice-icon" aria-hidden="true">
         <svg viewBox="0 0 24 24" focusable="false">
           <path d="M12 3v12m0 0 5-5m-5 5-5-5M5 20h14"></path>
@@ -43,22 +45,24 @@
         <small id="updateStatus">Installed: <span id="updateCurrentVersion"></span></small>
       </div>
       <div class="update-notice-actions">
-        <button id="installUpdateBtn" type="button">UPDATE NOW</button>
+        <button id="installUpdateBtn" type="button" hidden>UPDATE NOW</button>
         <a id="updateReleaseLink" href="#" target="_blank" rel="noopener">RELEASE <span>↗</span></a>
       </div>
       <button id="dismissUpdateBtn" type="button" aria-label="Dismiss update notification">×</button>
     </aside>
 
     <nav class="rail" aria-label="Main sections">
-      <button class="rail-tab active" data-tab="master"><b>01</b><span>MASTER</span></button>
-      <button class="rail-tab" data-tab="collections"><b>02</b><span>COLLECTIONS</span></button>
-      <button class="rail-tab" data-tab="franchises"><b>03</b><span>FRANCHISES</span></button>
-      <button class="rail-tab" data-tab="adult"><b>04</b><span>ADULT</span></button>
-      <button class="rail-tab" data-tab="favorites"><b>05</b><span>FAVORITES</span></button>
-      <button class="rail-tab" data-tab="userlist"><b>06</b><span>USERLIST</span></button>
+      <button class="rail-tab active" data-tab="master" type="button" aria-current="page">
+        <b>01</b><span>MASTER</span>
+      </button>
+      <button class="rail-tab" data-tab="collections" type="button"><b>02</b><span>COLLECTIONS</span></button>
+      <button class="rail-tab" data-tab="franchises" type="button"><b>03</b><span>FRANCHISES</span></button>
+      <button class="rail-tab" data-tab="adult" type="button"><b>04</b><span>ADULT</span></button>
+      <button class="rail-tab" data-tab="favorites" type="button"><b>05</b><span>FAVORITES</span></button>
+      <button class="rail-tab" data-tab="userlist" type="button"><b>06</b><span>USERLIST</span></button>
     </nav>
 
-    <main class="main-shell">
+    <main id="mainContent" class="main-shell">
       <section id="masterTab" class="panel active">
         <div class="hero-grid">
           <div class="hero-copy">
@@ -69,11 +73,11 @@
               filters, or save titles for later.
             </p>
             <div class="hero-actions">
-              <button id="surpriseBtn" class="slash-button hot">SURPRISE ME</button>
-              <button id="topUnseenBtn" class="slash-button">TOP UNSEEN</button>
+              <button id="surpriseBtn" class="slash-button hot" type="button">SURPRISE ME</button>
+              <button id="topUnseenBtn" class="slash-button" type="button">TOP UNSEEN</button>
             </div>
           </div>
-          <aside class="hero-feature" id="heroFeature">
+          <aside class="hero-feature" id="heroFeature" aria-label="Top-ranked title">
             <div class="feature-rank">#001</div>
             <div class="feature-lines"><span></span><span></span><span></span></div>
             <div class="feature-title">ATTACK ON TITAN</div>
@@ -136,7 +140,7 @@
             </svg>
             <b>DESC</b>
           </button>
-          <button id="viewToggle" class="square-button" title="Toggle compact view">▥</button>
+          <button id="viewToggle" class="square-button" type="button" title="Toggle compact view">▥</button>
         </div>
         <div class="result-line">
           <span><b id="resultCount">0</b> TITLES</span>
@@ -146,7 +150,9 @@
           </div>
         </div>
         <section class="card-grid" id="cards"></section>
-        <div class="load-wrap"><button id="loadMoreBtn" class="slash-button">LOAD MORE</button></div>
+        <div class="load-wrap">
+          <button id="loadMoreBtn" class="slash-button" type="button">LOAD MORE</button>
+        </div>
       </section>
 
       <section id="collectionsTab" class="panel">
@@ -198,13 +204,13 @@
           </p>
         </header>
         <div class="adult-controls">
-          <button class="adult-chip active" data-adult="all">ALL ADULT</button>
-          <button class="adult-chip" data-adult="ecchi">ECCHI</button>
-          <button class="adult-chip" data-adult="erotic">EROTIC</button>
-          <button class="adult-chip" data-adult="hentai">HENTAI</button>
-          <button class="adult-chip" data-adult="gore">GORE</button>
-          <button class="adult-chip" data-adult="violence">EXTREME VIOLENCE</button>
-          <button class="adult-chip" data-adult="disturbing">DISTURBING</button>
+          <button class="adult-chip active" data-adult="all" type="button">ALL ADULT</button>
+          <button class="adult-chip" data-adult="ecchi" type="button">ECCHI</button>
+          <button class="adult-chip" data-adult="erotic" type="button">EROTIC</button>
+          <button class="adult-chip" data-adult="hentai" type="button">HENTAI</button>
+          <button class="adult-chip" data-adult="gore" type="button">GORE</button>
+          <button class="adult-chip" data-adult="violence" type="button">EXTREME VIOLENCE</button>
+          <button class="adult-chip" data-adult="disturbing" type="button">DISTURBING</button>
         </div>
         <div class="adult-legend">
           <strong>CONTENT GUIDE</strong><span class="severity-0">None</span
@@ -257,9 +263,11 @@
               ratings, favorites and private notes stay on this device.
             </p>
             <div class="userlist-summary" id="userListSummary"></div>
-            <button id="generateCodeBtn" class="slash-button hot wide">GENERATE SIGNED CODE</button>
+            <button id="generateCodeBtn" class="slash-button hot wide" type="button">
+              GENERATE SIGNED CODE
+            </button>
             <textarea id="exportCode" spellcheck="false" readonly placeholder="UWL.…"></textarea>
-            <button id="copyCodeBtn" class="slash-button wide">COPY CODE</button>
+            <button id="copyCodeBtn" class="slash-button wide" type="button">COPY CODE</button>
           </section>
           <section class="user-panel import-panel">
             <div class="panel-no">B</div>
@@ -270,6 +278,7 @@
             </p>
             <label class="field-label"
               >LOCAL SOURCE NAME<input
+                type="text"
                 id="importSourceName"
                 maxlength="40"
                 placeholder="e.g. Alex / Reddit user / Jordan"
@@ -281,7 +290,7 @@
                 placeholder="Paste UWL…"
               ></textarea>
             </label>
-            <button id="importCodeBtn" class="slash-button hot wide">VERIFY + IMPORT</button>
+            <button id="importCodeBtn" class="slash-button hot wide" type="button">VERIFY + IMPORT</button>
             <div id="importResult" class="import-result"></div>
           </section>
           <section class="user-panel add-panel">
@@ -295,7 +304,7 @@
             </p>
             <form id="addTitleForm">
               <label class="field-label"
-                >TITLE<input id="addTitleName" required maxlength="180" placeholder="Title"
+                >TITLE<input type="text" id="addTitleName" required maxlength="180" placeholder="Title"
               /></label>
               <div class="field-row">
                 <label class="field-label"
@@ -318,7 +327,11 @@
                 >
               </div>
               <label class="field-label"
-                >ORIGIN<input id="addTitleOrigin" maxlength="80" placeholder="Japan / US / China / ..."
+                >ORIGIN<input
+                  type="text"
+                  id="addTitleOrigin"
+                  maxlength="80"
+                  placeholder="Japan / US / China / ..."
               /></label>
               <button class="slash-button wide" type="submit">RESOLVE + ADD</button>
             </form>
@@ -421,17 +434,17 @@
       </section>
     </main>
 
-    <dialog id="detailDialog" class="detail-dialog">
-      <button class="dialog-x" id="dialogClose" aria-label="Close">×</button>
+    <dialog id="detailDialog" class="detail-dialog" aria-label="Title details">
+      <button class="dialog-x" id="dialogClose" type="button" aria-label="Close">×</button>
       <div id="dialogBody"></div>
     </dialog>
 
-    <dialog id="collectionDialog" class="collection-dialog">
-      <button class="dialog-x" id="collectionClose" aria-label="Close">×</button>
+    <dialog id="collectionDialog" class="collection-dialog" aria-label="Collection titles">
+      <button class="dialog-x" id="collectionClose" type="button" aria-label="Close">×</button>
       <div id="collectionBody"></div>
     </dialog>
 
     <div class="toast" id="toast" popover="manual"></div>
-    <script type="module" src="app.js?v=2.1.0"></script>
+    <script type="module" src="app.js?v=2.2.0"></script>
   </body>
 </html>

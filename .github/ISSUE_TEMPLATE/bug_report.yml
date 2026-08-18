@@ -1,0 +1,72 @@
+name: Bug report
+description: Report a reproducible problem in Ultimate Animation Index
+title: '[Bug]: '
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: Thanks for helping improve the project. Please remove private notes, UserList keys and personal data from logs or screenshots.
+  - type: input
+    id: version
+    attributes:
+      label: Version
+      description: The installed version shown by the update notice or package.json.
+      placeholder: 2.2.0
+    validations:
+      required: true
+  - type: dropdown
+    id: installation
+    attributes:
+      label: Installation method
+      options:
+        - Git clone with a start launcher
+        - Git clone with npm start
+        - GitHub release archive
+        - Docker Compose
+    validations:
+      required: true
+  - type: input
+    id: environment
+    attributes:
+      label: Environment
+      description: Operating system, browser and Node.js version where applicable.
+      placeholder: Windows 11, Firefox 130, Node.js 22.15.1
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      description: List the smallest reliable sequence that causes the problem.
+      placeholder: |
+        1. Open ...
+        2. Select ...
+        3. Observe ...
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual behavior and logs
+      description: Include relevant browser-console or terminal output after removing private data.
+    validations:
+      required: true
+  - type: textarea
+    id: screenshots
+    attributes:
+      label: Screenshots or additional context
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Before submitting
+      options:
+        - label: I tested the latest release and searched existing issues for this problem.
+          required: true
+        - label: I removed private keys, private notes and personal data from this report.
+          required: true

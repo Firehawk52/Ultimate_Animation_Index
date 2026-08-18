@@ -2,9 +2,9 @@
 
 ## Reporting a vulnerability
 
-Please do not publish an exploitable security issue in a public GitHub issue. Use
-GitHub's private vulnerability reporting feature for the repository when available,
-or contact the repository owner privately.
+Please do not publish an exploitable security issue in a public GitHub issue. Use the
+[private vulnerability report](https://github.com/Firehawk52/ultimate-animation-index/security/advisories/new)
+so the maintainer can investigate before details become public.
 
 Include the affected version, reproduction steps, expected impact and any suggested
 mitigation. Do not include real UserList private keys or other personal data.
@@ -25,7 +25,9 @@ notes and the sender's display name. Imported codes are verified and validated b
 browser data is changed.
 
 Catalog correction packages are unsigned data proposals and never contain a write token.
-The catalog mutation endpoint accepts only same-origin loopback requests from the computer
-running the server and requires an ephemeral capability token created at server startup.
-Remote clients can validate and export packages but cannot write to that installation's
-catalog through the application.
+The catalog mutation endpoint accepts only same-origin trusted-local requests and requires
+an ephemeral capability token created at server startup. Native starts trust loopback only.
+The included Docker Compose file binds its published port to host loopback and explicitly
+trusts the Docker bridge so container users retain local catalog editing. Remote clients can
+validate and export packages but cannot write to that installation's catalog through the
+default configuration. Source updates additionally require a Git clone.

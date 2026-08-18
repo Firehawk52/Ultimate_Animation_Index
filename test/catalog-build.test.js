@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import test from 'node:test';
 
-import { catalogNeedsBuild, validateCatalog } from '../scripts/build-catalog.mjs';
+import { catalogNeedsBuild, validateCatalog } from '../scripts/build-catalog.js';
 
 const sourceUrl = new URL('../data/catalog-source.json', import.meta.url);
 const generatedUrl = new URL('../public/catalog.json', import.meta.url);

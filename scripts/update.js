@@ -1,6 +1,7 @@
 import { spawnSync } from 'node:child_process';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { assertSupportedNode, parsePort, readLocalHealth } from './runtime.js';
 
 const root = dirname(dirname(fileURLToPath(import.meta.url)));
 
@@ -33,18 +34,12 @@ export function validateUpdateState({ insideWorkTree, branch, changes }) {
 }
 
 async function appIsRunning() {
-  const port = process.env.PORT || '8787';
-  try {
-    const response = await fetch(`http://127.0.0.1:${port}/api/health`, {
-      signal: AbortSignal.timeout(900),
-    });
-    return response.ok;
-  } catch {
-    return false;
-  }
+  const port = parsePort(process.env.PORT);
+  return Boolean(await readLocalHealth(port));
 }
 
 export async function updateInstallation({ checkRunningServer = true } = {}) {
+  assertSupportedNode();
   console.log('\nUltimate Animation Index updater\n');
   if (checkRunningServer && (await appIsRunning()))
     throw new Error('The app is still running. Close its server window, then run the updater again.');
@@ -78,8 +73,8 @@ export async function updateInstallation({ checkRunningServer = true } = {}) {
   }
 
   console.log('Validating and regenerating the local catalog...');
-  execute(process.execPath, ['scripts/build-catalog.mjs']);
-  console.log('\nUpdate complete. Start the app again with npm start or its RUN launcher.\n');
+  execute(process.execPath, ['scripts/build-catalog.js']);
+  console.log('\nUpdate complete. Start the app again with npm start or its start launcher.\n');
 }
 
 const isDirectRun = process.argv[1] && resolve(process.argv[1]) === resolve(fileURLToPath(import.meta.url));

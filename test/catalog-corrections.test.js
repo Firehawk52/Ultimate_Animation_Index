@@ -6,7 +6,7 @@ import {
   catalogSnapshot,
   parseCorrectionCode,
   validateCorrectionPackage,
-} from '../scripts/catalog-corrections.mjs';
+} from '../scripts/catalog-corrections.js';
 
 const source = JSON.parse(await readFile(new URL('../data/catalog-source.json', import.meta.url), 'utf8'));
 
