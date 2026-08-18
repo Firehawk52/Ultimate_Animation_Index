@@ -4,6 +4,12 @@ All notable changes to Ultimate Animation Index are documented here.
 
 ## Unreleased
 
+## [2.2.1] - 2026-08-18
+
+### Fixed
+
+- Restored the legacy catalog-build entry point required by an updater process started before the 2.2.0 file-extension migration.
+
 ## [2.2.0] - 2026-08-18
 
 ### Runtime and update reliability

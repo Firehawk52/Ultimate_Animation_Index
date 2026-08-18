@@ -8,7 +8,7 @@ import {
 
 (async () => {
   'use strict';
-  const APP_VERSION = '2.2.0';
+  const APP_VERSION = '2.2.1';
   const catalogResponse = await fetch('catalog.json');
   if (!catalogResponse.ok) throw new Error(`Could not load catalog (${catalogResponse.status})`);
   const CAT = await catalogResponse.json();
