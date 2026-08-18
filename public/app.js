@@ -482,7 +482,9 @@ import {
     const root = $('#favoriteCards');
     root.innerHTML = arr.length
       ? arr.map((x) => cardHTML(x)).join('')
-      : '<div class="empty-state">No favorites yet. Use the heart on any title to add it here.</div>';
+      : q
+        ? '<div class="empty-state">No favorites match that search.</div>'
+        : '<div class="empty-state">No favorites yet. Use the heart on any title to add it here.</div>';
     bindCards(root);
     queueMetadata(arr, { priority: true });
   }
@@ -542,12 +544,14 @@ import {
       return !q || `${c.name} ${c.kind} ${c.description} ${titles}`.toLowerCase().includes(q);
     });
     $('#collectionCount').textContent = `${all.length} COLLECTIONS`;
-    $('#collectionGrid').innerHTML = all
-      .map(
-        (c) =>
-          `<button class="collection-card" data-cid="${esc(c.id)}" type="button"><span class="collection-kind">${esc(c.kind.toUpperCase())}</span><h3>${esc(c.name)}</h3><p>${esc(c.description)}</p><span class="collection-mode">${esc(c.mode.toUpperCase())}</span><span class="collection-count">${c.items.length}</span></button>`,
-      )
-      .join('');
+    $('#collectionGrid').innerHTML = all.length
+      ? all
+          .map(
+            (c) =>
+              `<button class="collection-card" data-cid="${esc(c.id)}" type="button"><span class="collection-kind">${esc(c.kind.toUpperCase())}</span><h3>${esc(c.name)}</h3><p>${esc(c.description)}</p><span class="collection-mode">${esc(c.mode.toUpperCase())}</span><span class="collection-count">${c.items.length}</span></button>`,
+          )
+          .join('')
+      : '<div class="empty-state">No collections match that search.</div>';
     $$('.collection-card', $('#collectionGrid')).forEach((el) => {
       el.addEventListener('click', () => openCollection(el.dataset.cid));
     });
@@ -977,15 +981,17 @@ import {
       (f) => !q || `${f.name} ${f.summary} ${JSON.stringify(f.orders)}`.toLowerCase().includes(q),
     );
     $('#franchiseCount').textContent = `${arr.length} GUIDES`;
-    $('#franchiseStack').innerHTML = arr
-      .map((f, i) => {
-        const representative = franchiseRepresentative(f);
-        const cachedGroup = representative ? cachedSeriesGroup(representative) : null;
-        const cachedStats = groupEpisodeStats(cachedGroup);
-        const completed = Boolean(cachedStats.total && cachedStats.watched === cachedStats.total);
-        return `<details class="franchise ${completed ? 'is-completed' : ''}" ${representative ? `data-series-owner="${esc(representative.id)}"` : ''}><summary><span class="franchise-no">${String(i + 1).padStart(2, '0')}</span><h3>${esc(f.name)}</h3>${franchiseCompletionBadgeHTML()}<span class="franchise-chevron">+</span></summary><div class="franchise-body"><p class="franchise-summary">${esc(f.summary)}</p>${representative ? `<div class="episode-tracker-mount franchise-episode-mount" data-episode-owner="${esc(representative.id)}" data-episode-variant="franchise"></div>` : ''}${f.orders.map((o) => `<section class="order-block"><h4>${esc(o.label)}</h4>${o.note ? `<p class="order-note">${esc(o.note)}</p>` : ''}<div class="steps">${o.steps.map((s) => `<div class="step"><span class="step-n">${esc(s.n)}</span><span class="step-title">${esc(s.title)}${s.note ? `<small class="step-note">${esc(s.note)}</small>` : ''}</span><span class="flag ${esc(s.flag)}">${esc(s.flag)}</span></div>`).join('')}</div></section>`).join('')}</div></details>`;
-      })
-      .join('');
+    $('#franchiseStack').innerHTML = arr.length
+      ? arr
+          .map((f, i) => {
+            const representative = franchiseRepresentative(f);
+            const cachedGroup = representative ? cachedSeriesGroup(representative) : null;
+            const cachedStats = groupEpisodeStats(cachedGroup);
+            const completed = Boolean(cachedStats.total && cachedStats.watched === cachedStats.total);
+            return `<details class="franchise ${completed ? 'is-completed' : ''}" ${representative ? `data-series-owner="${esc(representative.id)}"` : ''}><summary><span class="franchise-no">${String(i + 1).padStart(2, '0')}</span><h3>${esc(f.name)}</h3>${franchiseCompletionBadgeHTML()}<span class="franchise-chevron">+</span></summary><div class="franchise-body"><p class="franchise-summary">${esc(f.summary)}</p>${representative ? `<div class="episode-tracker-mount franchise-episode-mount" data-episode-owner="${esc(representative.id)}" data-episode-variant="franchise"></div>` : ''}${f.orders.map((o) => `<section class="order-block"><h4>${esc(o.label)}</h4>${o.note ? `<p class="order-note">${esc(o.note)}</p>` : ''}<div class="steps">${o.steps.map((s) => `<div class="step"><span class="step-n">${esc(s.n)}</span><span class="step-title">${esc(s.title)}${s.note ? `<small class="step-note">${esc(s.note)}</small>` : ''}</span><span class="flag ${esc(s.flag)}">${esc(s.flag)}</span></div>`).join('')}</div></section>`).join('')}</div></details>`;
+          })
+          .join('')
+      : '<div class="empty-state">No franchise guides match that search.</div>';
     $$('.franchise.is-completed .franchise-completion', $('#franchiseStack')).forEach(
       (badge) => (badge.hidden = false),
     );
@@ -2234,7 +2240,7 @@ import {
   function ratingScaleHelp(format = state.ratingFormat) {
     return format === 'ten'
       ? 'Rate from 0 to 10 in half-point steps. Zero leaves the title unrated.'
-      : 'D = 5 // C = 6 // B = 7 // A = 8 // A+ = 9 // S = 10';
+      : 'F = 1–3 // E = 4 // D = 5 // C = 6 // B = 7 // A = 8 // A+ = 9 // S = 10';
   }
 
   function openDetail(id) {

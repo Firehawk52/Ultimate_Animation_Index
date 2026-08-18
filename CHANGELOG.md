@@ -4,6 +4,12 @@ All notable changes to Ultimate Animation Index are documented here.
 
 ## Unreleased
 
+### Changed
+
+- Standardized Master, Collections, Franchise Guides and Favorites on one accessible `SEARCH //` component while retaining live filtering and refresh persistence.
+- Added search-specific empty states so filtered views distinguish no matches from genuinely empty collections.
+- Extended personal letter ratings to `F, E, D, C, B, A, A+, S`, covering the complete 1–10 scale without changing numeric storage or sorting.
+
 ## [2.2.1] - 2026-08-18
 
 ### Fixed

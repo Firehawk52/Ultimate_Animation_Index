@@ -540,17 +540,25 @@ body:after {
   top: 78px;
 }
 .search-block {
+  width: 100%;
   height: 44px;
-  border: 1px solid var(--line);
+  border: 1px solid #454e5d;
   display: flex;
   align-items: center;
-  background: #0e1016;
+  background: #131720;
+  color: #eef1f5;
+  transition:
+    border-color 160ms ease,
+    background-color 160ms ease;
 }
-.search-block span {
+.search-prompt {
+  flex: 0 0 auto;
   font: 800 11px var(--display);
   letter-spacing: 0.12em;
   color: var(--hot);
   padding: 0 12px;
+  cursor: text;
+  user-select: none;
 }
 .search-block input {
   height: 100%;
@@ -559,12 +567,20 @@ body:after {
   background: transparent;
   border: 0;
   outline: 0;
-  padding-right: 12px;
+  padding: 0 12px 0 0;
+  color: #eef1f5;
+  font-size: 14px;
+  letter-spacing: 0.01em;
+}
+.search-block input::placeholder {
+  color: #818899;
+  opacity: 1;
+}
+.search-block input::-webkit-search-cancel-button {
+  cursor: pointer;
+  filter: invert(0.8);
 }
 .toolbar-shell select,
-.collection-tools input,
-.franchise-tools input,
-.favorites-tools input,
 .field-label input,
 .field-label select,
 .field-label textarea,
@@ -618,9 +634,6 @@ body:after {
 }
 .toolbar-shell select:focus,
 .search-block:focus-within,
-.collection-tools input:focus,
-.franchise-tools input:focus,
-.favorites-tools input:focus,
 .field-label input:focus,
 .field-label select:focus,
 .user-panel textarea:focus {
@@ -1065,10 +1078,9 @@ body:after {
   align-items: center;
   padding: 18px 0;
 }
-.collection-tools input,
-.franchise-tools input,
-.favorites-tools input {
-  height: 44px;
+.collection-tools .search-block,
+.franchise-tools .search-block,
+.favorites-tools .search-block {
   width: min(520px, 100%);
 }
 .collection-tools span,
@@ -2640,9 +2652,9 @@ body:after {
     flex-direction: column;
     gap: 8px;
   }
-  .collection-tools input,
-  .franchise-tools input,
-  .favorites-tools input {
+  .collection-tools .search-block,
+  .franchise-tools .search-block,
+  .favorites-tools .search-block {
     width: 100%;
   }
   .result-line {
@@ -2888,7 +2900,6 @@ textarea:focus-visible,
 }
 
 /* Filter controls */
-.search-block,
 .toolbar-shell select {
   background: #131720;
   border-color: #454e5d;

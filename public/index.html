@@ -89,8 +89,8 @@
 
         <div class="toolbar-shell sticky-tools">
           <div class="search-block">
-            <span>SEARCH //</span
-            ><input
+            <label class="search-prompt" for="searchInput">SEARCH //</label>
+            <input
               id="searchInput"
               type="search"
               placeholder="Search titles, genres or studios"
@@ -167,9 +167,16 @@
           </p>
         </header>
         <div class="collection-tools">
-          <input id="collectionSearch" type="search" placeholder="Search studio, director or title..." /><span
-            id="collectionCount"
-          ></span>
+          <div class="search-block">
+            <label class="search-prompt" for="collectionSearch">SEARCH //</label>
+            <input
+              id="collectionSearch"
+              type="search"
+              placeholder="Search studios, directors or titles"
+              autocomplete="off"
+            />
+          </div>
+          <span id="collectionCount"></span>
         </div>
         <div class="collection-grid" id="collectionGrid"></div>
       </section>
@@ -186,9 +193,16 @@
           </p>
         </header>
         <div class="franchise-tools">
-          <input id="franchiseSearch" type="search" placeholder="Search Fate, Gundam, Haruhi..." /><span
-            id="franchiseCount"
-          ></span>
+          <div class="search-block">
+            <label class="search-prompt" for="franchiseSearch">SEARCH //</label>
+            <input
+              id="franchiseSearch"
+              type="search"
+              placeholder="Search franchises, titles or watch orders"
+              autocomplete="off"
+            />
+          </div>
+          <span id="franchiseCount"></span>
         </div>
         <div class="franchise-stack" id="franchiseStack"></div>
       </section>
@@ -233,7 +247,15 @@
           </p>
         </header>
         <div class="favorites-tools">
-          <input id="favoriteSearch" type="search" placeholder="Search favorites..." />
+          <div class="search-block">
+            <label class="search-prompt" for="favoriteSearch">SEARCH //</label>
+            <input
+              id="favoriteSearch"
+              type="search"
+              placeholder="Search favorite titles, genres or studios"
+              autocomplete="off"
+            />
+          </div>
           <span id="favoriteCount">0 FAVORITES</span>
         </div>
         <section class="card-grid" id="favoriteCards"></section>

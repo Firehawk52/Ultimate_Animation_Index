@@ -24,7 +24,9 @@ const PERSONAL_TIERS = [
   { tier: 'A', minimum: 8, value: 8 },
   { tier: 'B', minimum: 7, value: 7 },
   { tier: 'C', minimum: 6, value: 6 },
-  { tier: 'D', minimum: Number.EPSILON, value: 5 },
+  { tier: 'D', minimum: 5, value: 5 },
+  { tier: 'E', minimum: 4, value: 4 },
+  { tier: 'F', minimum: Number.EPSILON, value: 1 },
 ];
 
 export function normalizeRatingFormat(value) {
