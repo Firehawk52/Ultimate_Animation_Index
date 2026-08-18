@@ -4,6 +4,8 @@ All notable changes to Ultimate Animation Index are documented here.
 
 ## Unreleased
 
+## [2.2.2] - 2026-08-18
+
 ### Changed
 
 - Standardized Master, Collections, Franchise Guides and Favorites on one accessible `SEARCH //` component while retaining live filtering and refresh persistence.
