@@ -48,6 +48,9 @@ function userData() {
       collectionSort: 'release',
       collectionSortOrder: 'desc',
       masterSortOrder: 'asc',
+      adultSearch: 'gore',
+      adultSort: 'myrating',
+      adultSortOrder: 'desc',
       hideCompleted: false,
     },
     compact: true,
@@ -70,6 +73,9 @@ test('private user backups preserve all supported local user data', () => {
   assert.equal(restored.data.ui.collectionSort, 'release');
   assert.equal(restored.data.ui.collectionSortOrder, 'desc');
   assert.equal(restored.data.ui.masterSortOrder, 'asc');
+  assert.equal(restored.data.ui.adultSearch, 'gore');
+  assert.equal(restored.data.ui.adultSort, 'myrating');
+  assert.equal(restored.data.ui.adultSortOrder, 'desc');
   assert.equal(restored.data.customTitles[0].scores.overall, 84);
   assert.deepEqual(summary, {
     statuses: 1,
@@ -102,6 +108,10 @@ test('backup validation rejects invalid status and episode values', () => {
   const badMasterSortOrder = createUserBackup(userData());
   badMasterSortOrder.data.ui.masterSortOrder = 'mixed';
   assert.throws(() => validateUserBackup(badMasterSortOrder), /invalid-master-sort-order/);
+
+  const badAdultSortOrder = createUserBackup(userData());
+  badAdultSortOrder.data.ui.adultSortOrder = 'mixed';
+  assert.throws(() => validateUserBackup(badAdultSortOrder), /invalid-adult-sort-order/);
 });
 
 test('merge import keeps current records while backup values win conflicts', () => {

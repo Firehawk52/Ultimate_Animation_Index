@@ -4,6 +4,26 @@ All notable changes to Ultimate Animation Index are documented here.
 
 ## Unreleased
 
+## [2.3.0] - 2026-08-20
+
+### Added
+
+- Added a full Adult toolbar with independent title search, every Master sort mode and a separate ascending/descending control. Adult search and sorting persist across refreshes and private backup/import.
+- Reworked content guidance into a shared, severity-coloured five-card system for title details and Adult cards, with accessible compact labels and modern tooltips.
+- Added a dedicated **MY LIBRARY** area for the global rating-display preference, private data tools and portable sharing.
+- Added a required first-run rating-format setup modal with letter, 10-point and five-star choices. The selection applies across the interface and can later be changed in **MY LIBRARY**.
+
+### Changed
+
+- Renamed the broader personal-data section from **USERLIST** to **MY LIBRARY** while retaining the compatible UWL shared-list format.
+- Standardized all built-in tooltips on one modern accessible tooltip layer.
+- Clarified the personal letter scale as `F`, `E`, `D`, `C`, `C+`, `B`, `B+`, `A`, `A+` and `S`.
+
+### Fixed
+
+- Ensured rating choices made during first-run setup are saved and immediately reflected in **MY LIBRARY**.
+- Added cache versioning for the new interface assets so existing installations receive the current Adult sorting and rating setup code.
+
 ## [2.2.6] - 2026-08-20
 
 ### Fixed

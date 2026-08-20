@@ -189,6 +189,8 @@ function validateUI(value) {
     'genreFilter',
     'statusFilter',
     'sortSelect',
+    'adultSearch',
+    'adultSort',
     'collectionSearch',
     'franchiseSearch',
     'favoriteSearch',
@@ -213,6 +215,10 @@ function validateUI(value) {
   if (source.masterSortOrder !== undefined) {
     if (!['asc', 'desc'].includes(source.masterSortOrder)) throw new Error('invalid-master-sort-order');
     result.masterSortOrder = source.masterSortOrder;
+  }
+  if (source.adultSortOrder !== undefined) {
+    if (!['asc', 'desc'].includes(source.adultSortOrder)) throw new Error('invalid-adult-sort-order');
+    result.adultSortOrder = source.adultSortOrder;
   }
   for (const key of ['hideCompleted', 'customOnly']) {
     if (typeof source[key] === 'boolean') result[key] = source[key];
@@ -242,7 +248,7 @@ export function validateUserBackup(input) {
   };
 }
 
-export function createUserBackup(data, { createdAt = new Date().toISOString(), appVersion = '2.2.6' } = {}) {
+export function createUserBackup(data, { createdAt = new Date().toISOString(), appVersion = '2.3.0' } = {}) {
   return validateUserBackup({ format: FORMAT, version: VERSION, createdAt, appVersion, data });
 }
 

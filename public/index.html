@@ -17,7 +17,7 @@
       href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:ital,wght@0,600;0,700;0,800;1,700&family=Space+Grotesk:wght@400;500;600;700&display=swap"
       rel="stylesheet"
     />
-    <link rel="stylesheet" href="styles.css?v=2.2.6" />
+    <link rel="stylesheet" href="styles.css?v=2.3.0-library-settings-1" />
   </head>
   <body>
     <a class="skip-link" href="#mainContent">Skip to content</a>
@@ -59,7 +59,7 @@
       <button class="rail-tab" data-tab="franchises" type="button"><b>03</b><span>FRANCHISES</span></button>
       <button class="rail-tab" data-tab="adult" type="button"><b>04</b><span>ADULT</span></button>
       <button class="rail-tab" data-tab="favorites" type="button"><b>05</b><span>FAVORITES</span></button>
-      <button class="rail-tab" data-tab="userlist" type="button"><b>06</b><span>USERLIST</span></button>
+      <button class="rail-tab" data-tab="userlist" type="button"><b>06</b><span>MY LIBRARY</span></button>
     </nav>
 
     <main id="mainContent" class="main-shell">
@@ -114,11 +114,6 @@
             <option>On hold</option>
             <option>Dropped</option>
           </select>
-          <select id="ratingFormatSelect" aria-label="Rating format">
-            <option value="tier">RATING: LETTER SCALE</option>
-            <option value="ten">RATING: 10 SCALE</option>
-            <option value="stars">RATING: 5 STARS</option>
-          </select>
           <select id="sortSelect" aria-label="Sort titles by">
             <option value="rank">MASTER RANK</option>
             <option value="overall">OVERALL SCORE</option>
@@ -134,14 +129,16 @@
             class="master-sort-order"
             type="button"
             aria-label="Change to ascending order"
-            title="Change to ascending order"
+            data-tooltip="Change to ascending order"
           >
             <svg viewBox="0 0 20 20" aria-hidden="true">
               <path d="M3 5h9M3 9h7M3 13h5M15 4v12m-3-3 3 3 3-3" />
             </svg>
             <b>DESC</b>
           </button>
-          <button id="viewToggle" class="square-button" type="button" title="Toggle compact view">▥</button>
+          <button id="viewToggle" class="square-button" type="button" data-tooltip="Toggle compact view">
+            ▥
+          </button>
         </div>
         <div class="result-line">
           <span><b id="resultCount">0</b> TITLES</span>
@@ -227,11 +224,33 @@
           <button class="adult-chip" data-adult="violence" type="button">EXTREME VIOLENCE</button>
           <button class="adult-chip" data-adult="disturbing" type="button">DISTURBING</button>
         </div>
-        <div class="adult-legend">
-          <strong>CONTENT GUIDE</strong><span class="severity-0">None</span
-          ><span class="severity-1">Mild</span><span class="severity-2">Moderate</span
-          ><span class="severity-3">Strong</span><span class="severity-4">Very strong</span
-          ><span class="severity-5">Extreme</span>
+        <div class="adult-tools">
+          <div class="search-block">
+            <label class="search-prompt" for="adultSearch">SEARCH //</label>
+            <input
+              id="adultSearch"
+              type="search"
+              placeholder="Search adult titles, genres or studios"
+              autocomplete="off"
+            />
+          </div>
+          <select id="adultSort" aria-label="Sort Adult titles by">
+            <option value="rank">MASTER RANK</option>
+            <option value="overall">OVERALL SCORE</option>
+            <option value="production">PRODUCTION</option>
+            <option value="story">STORY</option>
+            <option value="emotional">EMOTIONAL PAYOFF</option>
+            <option value="year">RELEASE DATE</option>
+            <option value="title">NAME</option>
+            <option value="myrating">MY RATING</option>
+          </select>
+          <button
+            id="adultSortOrder"
+            class="master-sort-order"
+            type="button"
+            aria-label="Change to ascending order"
+            data-tooltip="Change to ascending order"
+          ></button>
         </div>
         <section class="card-grid adult-grid" id="adultCards"></section>
       </section>
@@ -265,21 +284,36 @@
       <section id="userlistTab" class="panel">
         <header class="section-head angled-head">
           <div>
-            <div class="kicker">SHARE YOUR PICKS</div>
-            <h2>USERLIST</h2>
+            <div class="kicker">YOUR PERSONAL SPACE</div>
+            <h2>MY LIBRARY</h2>
           </div>
-          <p>
-            Share recommendations and missing-title additions as one signed text code. The person importing it
-            chooses the source name on their own copy.
-          </p>
+          <p>Manage your global preferences, personal data and portable sharing codes in one place.</p>
         </header>
+        <section class="library-preferences" aria-labelledby="ratingDisplayTitle">
+          <div>
+            <div class="kicker">GLOBAL PREFERENCE</div>
+            <h3 id="ratingDisplayTitle">RATING DISPLAY</h3>
+            <p>
+              Choose how ratings appear everywhere in your library, including title cards and personal
+              ratings.
+            </p>
+          </div>
+          <label class="library-rating-format">
+            <span>RATING FORMAT</span>
+            <select id="ratingFormatSelect" aria-label="Global rating format">
+              <option value="tier">LETTER SCALE</option>
+              <option value="ten">10 SCALE</option>
+              <option value="stars">5 STARS</option>
+            </select>
+          </label>
+        </section>
         <div id="securityState" class="security-strip">
-          <b>SECURE USERLIST</b><span>Checking signature service...</span>
+          <b>SECURE SHARING</b><span>Checking signature service...</span>
         </div>
         <div class="userlist-grid">
           <section class="user-panel export-panel">
             <div class="panel-no">A</div>
-            <h3>EXPORT YOUR USERLIST</h3>
+            <h3>EXPORT A SHARED LIST</h3>
             <p>
               Includes your <b>Recommended</b> and <b>Not recommended</b> marks, plus titles you added
               yourself with their genres, content labels and severity ratings. Watch progress, personal
@@ -294,7 +328,7 @@
           </section>
           <section class="user-panel import-panel">
             <div class="panel-no">B</div>
-            <h3>IMPORT A USERLIST</h3>
+            <h3>IMPORT A SHARED LIST</h3>
             <p>
               The code is verified before anything is imported. The source name is chosen locally and is never
               stored in the shared code.
@@ -472,7 +506,34 @@
       <div id="collectionBody"></div>
     </dialog>
 
+    <dialog
+      id="ratingFormatDialog"
+      class="rating-format-dialog"
+      aria-labelledby="ratingFormatDialogTitle"
+      aria-describedby="ratingFormatDialogDescription"
+    >
+      <div class="rating-format-onboarding">
+        <div class="kicker">PERSONAL SETUP</div>
+        <h2 id="ratingFormatDialogTitle">CHOOSE YOUR RATING FORMAT</h2>
+        <p id="ratingFormatDialogDescription">
+          This controls how ratings appear throughout your library. You can change it later in MY LIBRARY.
+        </p>
+        <div class="rating-format-choices" role="group" aria-label="Choose a global rating format">
+          <button type="button" data-onboarding-rating-format="tier">
+            <b>S</b><span>LETTER SCALE</span><small>F · E · D · C · C+ · B · B+ · A · A+ · S</small>
+          </button>
+          <button type="button" data-onboarding-rating-format="ten">
+            <b>10</b><span>10 SCALE</span><small>1–10, with half steps</small>
+          </button>
+          <button type="button" data-onboarding-rating-format="stars">
+            <b>★</b><span>5 STARS</span><small>Half stars supported</small>
+          </button>
+        </div>
+        <p class="rating-format-note">A choice is required to continue.</p>
+      </div>
+    </dialog>
+
     <div class="toast" id="toast" popover="manual"></div>
-    <script type="module" src="app.js?v=2.2.6"></script>
+    <script type="module" src="app.js?v=2.3.0-rating-onboarding-3"></script>
   </body>
 </html>

@@ -12,13 +12,13 @@ lists.
 
 There is no title limit. The list can keep growing as new and older work is added.
 
-See the [changelog](CHANGELOG.md) for the full release history and version 2.2.6 details.
+See the [changelog](CHANGELOG.md) for the full release history and version 2.3.0 details.
 
 ## Highlights
 
 - **One worldwide catalog:** anime, films, OVAs, donghua and animation beyond Japan
 - **Local personal data:** progress, ratings, notes and favorites stay in your browser
-- **Selectable rating format:** use either the S–D letter scale or a 10-point scale throughout the interface
+- **Selectable rating format:** choose a global letter, 10-point or five-star rating display in My Library
 - **Update notifications:** receive an in-app link when a newer GitHub release is available
 - **Cover-level progress:** distinct status icons show not started, watching, completed,
   on hold and dropped titles without opening their details
