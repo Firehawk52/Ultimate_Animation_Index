@@ -515,7 +515,7 @@ function normMetaTitle(s = '') {
 
 // Metadata provider adapters
 const ANILIST_FIELDS = `id title{romaji english native} coverImage{extraLarge large} bannerImage seasonYear format status episodes duration genres tags{name rank isMediaSpoiler} averageScore siteUrl description(asHtml:false) isAdult studios(isMain:true){nodes{name}}`;
-const ANILIST_SERIES_FIELDS = `id title{romaji english native} coverImage{extraLarge large} seasonYear startDate{year month day} format status episodes duration siteUrl relations{edges{relationType(version:2) node{id type format}}}`;
+const ANILIST_SERIES_FIELDS = `id idMal title{romaji english native} coverImage{extraLarge large} seasonYear startDate{year month day} format status episodes duration siteUrl relations{edges{relationType(version:2) node{id type format}}}`;
 
 function contentLabels(labels = []) {
   const relevant =
@@ -655,14 +655,12 @@ export function fromAniListSeriesMedia(media) {
     duration: Number(media.duration) || 0,
     cover: media.coverImage?.extraLarge || media.coverImage?.large || '',
     siteUrl: media.siteUrl || '',
+    malId: Number(media.idMal) || 0,
     relations: (media.relations?.edges || [])
       .filter((edge) => {
         if (edge?.node?.type !== 'ANIME') return false;
         if (['PREQUEL', 'SEQUEL'].includes(edge.relationType)) return true;
-        return (
-          edge.relationType === 'SIDE_STORY' &&
-          ['OVA', 'ONA', 'SPECIAL'].includes(edge.node.format)
-        );
+        return edge.relationType === 'SIDE_STORY' && ['OVA', 'ONA', 'SPECIAL'].includes(edge.node.format);
       })
       .map((edge) => ({ id: String(edge.node.id), type: edge.relationType })),
   };
@@ -678,6 +676,75 @@ export function tvMazeSeriesNeedsRefresh(group) {
   return group?.showStatus !== 'Ended';
 }
 
+let lastJikanEpisodeRequest = 0;
+async function waitForJikanEpisodeSlot() {
+  const wait = Math.max(0, 380 - (Date.now() - lastJikanEpisodeRequest));
+  if (wait) await new Promise((resolve) => setTimeout(resolve, wait));
+  lastJikanEpisodeRequest = Date.now();
+}
+
+async function getJikanEpisodeTitles(malId, expectedEpisodes = 0) {
+  const id = Number(malId) || 0;
+  const expected = Math.max(0, Number(expectedEpisodes) || 0);
+  if (!id) return [];
+
+  const key = `episodes:jikan:v2:${id}`;
+  const cached = metadataCache[key];
+  const cachedTitles = Array.isArray(cached?.data) ? cached.data : [];
+  const cacheFresh = cached?.ts && Date.now() - cached.ts < 1000 * 60 * 60 * 24;
+  if (cachedTitles.length && ((expected && cachedTitles.length >= expected) || cacheFresh)) {
+    return expected ? cachedTitles.slice(0, expected) : cachedTitles;
+  }
+
+  const titles = [];
+  let page = 1;
+  let hasNextPage = true;
+
+  try {
+    while (hasNextPage && page <= 50) {
+      await waitForJikanEpisodeSlot();
+      let response = await fetch(`https://api.jikan.moe/v4/anime/${id}/episodes?page=${page}`, {
+        headers: { Accept: 'application/json' },
+        signal: AbortSignal.timeout(12000),
+      });
+
+      if (response.status === 429) {
+        const retryAfter = Math.max(1, Number(response.headers.get('retry-after')) || 1);
+        await new Promise((resolve) => setTimeout(resolve, retryAfter * 1000));
+        await waitForJikanEpisodeSlot();
+        response = await fetch(`https://api.jikan.moe/v4/anime/${id}/episodes?page=${page}`, {
+          headers: { Accept: 'application/json' },
+          signal: AbortSignal.timeout(12000),
+        });
+      }
+
+      if (!response.ok) throw new Error(`jikan-episodes-${response.status}`);
+      const body = await response.json();
+      const rows = Array.isArray(body.data) ? body.data : [];
+
+      for (const episode of rows) {
+        const number = Number(episode?.mal_id) || titles.length + 1;
+        if (number < 1) continue;
+        while (titles.length < number) titles.push('');
+        titles[number - 1] = String(
+          episode?.title || episode?.title_romanji || episode?.title_japanese || '',
+        ).trim();
+      }
+
+      hasNextPage = Boolean(body.pagination?.has_next_page);
+      if (expected && titles.length >= expected) break;
+      page += 1;
+    }
+
+    const normalized = expected ? titles.slice(0, expected) : titles;
+    metadataCache[key] = { ts: Date.now(), data: normalized };
+    persistCacheSoon();
+    return normalized;
+  } catch {
+    return expected ? cachedTitles.slice(0, expected) : cachedTitles;
+  }
+}
+
 async function fetchAniListSeriesNodes(ids) {
   if (!ids.length) return [];
   const definitions = ids.map((_, index) => `$id${index}:Int!`).join(',');
@@ -690,7 +757,7 @@ async function fetchAniListSeriesNodes(ids) {
 }
 
 async function getAniListSeries(title) {
-  const key = `series:anilist:v2:${normMetaTitle(title)}`;
+  const key = `series:anilist:v5:${normMetaTitle(title)}`;
   const cached = metadataCache[key];
   // Finished and cancelled series are immutable locally. Active AniList series
   // deliberately bypass the cache so new episodes and sequel relations appear
@@ -723,6 +790,7 @@ async function getAniListSeries(title) {
   for (const entry of entries.values()) {
     localized.push({
       ...entry,
+      episodeTitles: await getJikanEpisodeTitles(entry.malId, entry.episodes),
       cover: await localizeCover(entry.cover),
       relations: undefined,
     });
@@ -783,6 +851,7 @@ export function fromTVMazeSeries(show) {
         duration: Number(show.averageRuntime || show.runtime) || 0,
         cover: show.image?.original || show.image?.medium || '',
         siteUrl: show.url || show.officialSite || '',
+        episodeTitles: rows.map((episode) => String(episode.name || '').trim()),
       };
     });
   return {
@@ -796,7 +865,7 @@ export function fromTVMazeSeries(show) {
 }
 
 async function getTVMazeSeries(title) {
-  const key = `series:tvmaze:${normMetaTitle(title)}`;
+  const key = `series:tvmaze:v2:${normMetaTitle(title)}`;
   const cached = metadataCache[key];
   if (cached?.data && !tvMazeSeriesNeedsRefresh(cached.data)) return cached.data;
 

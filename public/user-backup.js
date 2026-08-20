@@ -197,7 +197,7 @@ function validateUI(value) {
     if (typeof source[key] === 'string') result[key] = uiText(source[key], 500, `ui-${key}`);
   }
   if (source.ratingFormat !== undefined) {
-    if (!['tier', 'ten'].includes(source.ratingFormat)) throw new Error('invalid-rating-format');
+    if (!['tier', 'ten', 'stars'].includes(source.ratingFormat)) throw new Error('invalid-rating-format');
     result.ratingFormat = source.ratingFormat;
   }
   if (source.collectionSort !== undefined) {
@@ -242,7 +242,7 @@ export function validateUserBackup(input) {
   };
 }
 
-export function createUserBackup(data, { createdAt = new Date().toISOString(), appVersion = '2.2.2' } = {}) {
+export function createUserBackup(data, { createdAt = new Date().toISOString(), appVersion = '2.2.5' } = {}) {
   return validateUserBackup({ format: FORMAT, version: VERSION, createdAt, appVersion, data });
 }
 

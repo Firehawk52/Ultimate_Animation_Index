@@ -1,4 +1,4 @@
-export const RATING_FORMATS = ['tier', 'ten'];
+export const RATING_FORMATS = ['tier', 'ten', 'stars'];
 
 const QUALITY_VALUES = {
   B: 5,
@@ -22,10 +22,12 @@ const PERSONAL_TIERS = [
   { tier: 'S', minimum: 10, value: 10 },
   { tier: 'A+', minimum: 9, value: 9 },
   { tier: 'A', minimum: 8, value: 8 },
-  { tier: 'B', minimum: 7, value: 7 },
-  { tier: 'C', minimum: 6, value: 6 },
-  { tier: 'D', minimum: 5, value: 5 },
-  { tier: 'E', minimum: 4, value: 4 },
+  { tier: 'B+', minimum: 7, value: 7 },
+  { tier: 'B', minimum: 6, value: 6 },
+  { tier: 'C+', minimum: 5, value: 5 },
+  { tier: 'C', minimum: 4, value: 4 },
+  { tier: 'D', minimum: 3, value: 3 },
+  { tier: 'E', minimum: 2, value: 2 },
   { tier: 'F', minimum: Number.EPSILON, value: 1 },
 ];
 
@@ -36,9 +38,24 @@ export function normalizeRatingFormat(value) {
 export function qualityRatingLabel(tier, format = 'tier', { suffix = false } = {}) {
   const normalizedTier = String(tier || 'CUSTOM').toUpperCase();
   if (!(normalizedTier in QUALITY_VALUES)) return normalizedTier;
-  if (normalizeRatingFormat(format) === 'tier') return QUALITY_TIERS[normalizedTier];
+  const normalizedFormat = normalizeRatingFormat(format);
+  if (normalizedFormat === 'tier') return QUALITY_TIERS[normalizedTier];
   const value = QUALITY_VALUES[normalizedTier];
+  if (normalizedFormat === 'stars') return starRatingLabel(value / 2);
   return suffix ? `${value}/10` : String(value);
+}
+
+export function starRatingLabel(value) {
+  const halves = Math.max(0, Math.min(10, Math.round(Number(value || 0) * 2)));
+  if (!halves) return '';
+  return `${'★'.repeat(Math.floor(halves / 2))}${halves % 2 ? '½' : ''}`;
+}
+
+export function personalStarOptions() {
+  return Array.from({ length: 10 }, (_, index) => {
+    const value = index + 1;
+    return { value, stars: value / 2, label: starRatingLabel(value / 2) };
+  });
 }
 
 export function personalRatingTier(value) {

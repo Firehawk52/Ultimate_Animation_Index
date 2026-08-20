@@ -12,7 +12,7 @@ lists.
 
 There is no title limit. The list can keep growing as new and older work is added.
 
-See the [changelog](CHANGELOG.md) for the full release history and version 2.2.3 details.
+See the [changelog](CHANGELOG.md) for the full release history and version 2.2.5 details.
 
 ## Highlights
 

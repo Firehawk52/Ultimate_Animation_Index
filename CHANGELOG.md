@@ -4,6 +4,28 @@ All notable changes to Ultimate Animation Index are documented here.
 
 ## Unreleased
 
+## [2.2.5] - 2026-08-20
+
+### Added
+
+- Added a third private rating format: a five-star scale with true half-star selection, giving ten equally spaced rating choices.
+- Expanded the letter scale to ten stored steps: `F`, `E`, `D`, `C`, `C+`, `B`, `B+`, `A`, `A+` and `S`.
+- Added graphical star badges to title covers and a matching star-tier filter that uses real half-star rendering instead of textual fractions.
+- Added episode titles to season trackers from AniList-linked Jikan metadata and TVMaze, with resilient local caching and rate limiting.
+
+### Changed
+
+- Redesigned season episode tracking for clearer titles, full-width use of incomplete rows, a dedicated action console and centred season codes.
+- Personal rating controls, recommendation buttons, rating guidance and selects now share the detail panel’s higher-contrast visual language.
+- The episode-derived status now reports **On hold** when a series has watched episodes but no episode is currently marked Watching.
+- Preserved the selected star format in local UI state and portable user backups.
+- Updated Attack on Titan: Lost Girls guidance to place it after season one.
+
+### Fixed
+
+- Matched the star-tier filter’s background, border, typography and chevron to the other Master-page dropdowns.
+- Corrected episode-title retrieval and cache versioning so AniList series can refresh title data safely while finished series remain cached.
+
 ## [2.2.3] - 2026-08-19
 
 ### Added

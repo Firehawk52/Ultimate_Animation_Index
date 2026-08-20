@@ -8,7 +8,7 @@ import {
 
 (async () => {
   'use strict';
-  const APP_VERSION = '2.2.3';
+  const APP_VERSION = '2.2.5';
   const catalogResponse = await fetch('catalog.json');
   if (!catalogResponse.ok) throw new Error(`Could not load catalog (${catalogResponse.status})`);
   const CAT = await catalogResponse.json();
@@ -23,7 +23,7 @@ import {
     favorites: 'uai:favorites:v1',
     ui: 'uai:ui-state:v1',
     episodes: 'uai:episode-progress:v1',
-    series: 'uai:series-groups:v2',
+    series: 'uai:series-groups:v5',
     catalogCorrections: 'uai:catalog-corrections:v1',
     dismissedUpdate: 'uai:dismissed-update:v1',
   };
@@ -223,6 +223,7 @@ import {
       ),
       (tier) => qualityRatingLabel(tier, state.ratingFormat, { suffix: state.ratingFormat === 'ten' }),
     );
+    renderStarTierFilter();
     fill($('#typeFilter'), [...new Set(items.map(displayType).filter(Boolean))].sort());
     fill(
       $('#genreFilter'),
@@ -243,6 +244,46 @@ import {
       sel.append(o);
     }
     if ([...sel.options].some((option) => option.value === selected)) sel.value = selected;
+  }
+
+  function renderStarTierFilter() {
+    const native = $('#tierFilter');
+    const existing = $('#starTierFilter');
+    if (existing) existing.remove();
+    const usesStars = state.ratingFormat === 'stars';
+    native.classList.toggle('star-tier-native', usesStars);
+    if (!usesStars) return;
+
+    const control = document.createElement('div');
+    control.id = 'starTierFilter';
+    control.className = 'star-tier-filter';
+    native.insertAdjacentElement('afterend', control);
+
+    const render = () => {
+      const selected = native.options[native.selectedIndex];
+      const selectedLabel = selected.value ? qualityRatingBadgeHTML(selected.value) : 'ALL TIERS';
+      control.innerHTML = `<button type="button" class="star-tier-trigger" aria-haspopup="listbox" aria-expanded="false">${selectedLabel}<span class="star-tier-chevron" aria-hidden="true"></span></button><div class="star-tier-menu" role="listbox" aria-label="Quality tier">${[
+        ...native.options,
+      ]
+        .map(
+          (option) =>
+            `<button type="button" role="option" aria-selected="${option.selected}" data-star-tier="${esc(option.value)}">${option.value ? qualityRatingBadgeHTML(option.value) : 'ALL TIERS'}</button>`,
+        )
+        .join('')}</div>`;
+      const trigger = $('.star-tier-trigger', control);
+      trigger.addEventListener('click', () => {
+        const open = control.classList.toggle('open');
+        trigger.setAttribute('aria-expanded', String(open));
+      });
+      $$('[data-star-tier]', control).forEach((button) =>
+        button.addEventListener('click', () => {
+          native.value = button.dataset.starTier;
+          native.dispatchEvent(new Event('change', { bubbles: true }));
+          render();
+        }),
+      );
+    };
+    render();
   }
 
   const UI_VALUE_FIELDS = [
@@ -377,6 +418,18 @@ import {
     return `<span class="status-mark status-${mark.slug}" role="img" aria-label="${esc(label)}" title="${esc(label)}"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">${mark.icon}</svg>${text}</span>`;
   }
 
+  function qualityRatingBadgeHTML(tier) {
+    const label = qualityRatingLabel(tier, state.ratingFormat);
+    if (state.ratingFormat !== 'stars' || !label.includes('★')) return esc(label);
+    const full = (label.match(/★/g) || []).length;
+    const half = label.includes('½');
+    return `<span class="quality-star-badge" role="img" aria-label="${esc(label.replace('½', ' and a half stars'))}">${Array.from(
+      { length: 5 },
+      (_, index) =>
+        `<i class="${index < full ? 'is-full' : index === full && half ? 'is-half' : ''}" aria-hidden="true">★</i>`,
+    ).join('')}</span>`;
+  }
+
   function cardHTML(x, { adult = false } = {}) {
     const m = meta[x.id]?.data || {},
       p = pFor(x.id),
@@ -395,9 +448,10 @@ import {
       : '';
     const fav = isFavorite(x.id);
     const content = adult ? contentGuide(x, true) : '';
+    const tierBadge = qualityRatingBadgeHTML(x.tier);
     return `<article class="title-card ${p.status === 'Completed' ? 'is-completed' : ''}" data-id="${esc(x.id)}">
       <button class="card-open" data-card-open-id="${esc(x.id)}" type="button" aria-label="${esc(`Open details for ${x.title}`)}"></button>
-      <div class="cover">${cover ? `<img loading="lazy" src="${esc(cover)}" alt="${esc(x.title)} cover">` : `<div class="cover-placeholder">${esc(initials(x.title))}</div>`}<span class="rank">${rank}</span><span class="tier">${esc(qualityRatingLabel(x.tier, state.ratingFormat))}</span><button class="favorite-toggle ${fav ? 'active' : ''}" data-fav-id="${esc(x.id)}" type="button" aria-label="${fav ? 'Remove from favorites' : 'Add to favorites'}" title="${fav ? 'Remove from favorites' : 'Add to favorites'}">${fav ? '♥' : '♡'}</button>${statusMarkHTML(p.status)}${verdictBadge}</div>
+      <div class="cover">${cover ? `<img loading="lazy" src="${esc(cover)}" alt="${esc(x.title)} cover">` : `<div class="cover-placeholder">${esc(initials(x.title))}</div>`}<span class="rank">${rank}</span><span class="tier">${tierBadge}</span><button class="favorite-toggle ${fav ? 'active' : ''}" data-fav-id="${esc(x.id)}" type="button" aria-label="${fav ? 'Remove from favorites' : 'Add to favorites'}" title="${fav ? 'Remove from favorites' : 'Add to favorites'}">${fav ? '♥' : '♡'}</button>${statusMarkHTML(p.status)}${verdictBadge}</div>
       <div class="card-body"><div class="card-meta">${esc(displayType(x).toUpperCase())} // ${esc(liveYear(x))} // ${esc((m.studio || x.origin || '').toUpperCase())}</div><h3>${esc(x.title)}</h3>
       <div class="tag-row">${tags.map((g) => `<span class="tag">${esc(g)}</span>`).join('')}</div>${sourceBadgesHTML(x.id)}${content}
       <div class="score-line"><div class="score-bit"><b>${sc.overall || '—'}</b><span>OVERALL</span></div><div class="score-bit"><b>${sc.production || '—'}</b><span>PROD</span></div><div class="score-bit"><b>${sc.story || '—'}</b><span>STORY</span></div><div class="score-bit"><b>${sc.emotional || '—'}</b><span>EMOTION</span></div></div></div></article>`;
@@ -682,7 +736,8 @@ import {
   function derivedEpisodeStatus(group) {
     const stats = groupEpisodeStats(group);
     if (stats.total && stats.watched === stats.total) return 'Completed';
-    if (stats.watching || stats.watched) return 'Watching';
+    if (stats.watching) return 'Watching';
+    if (stats.watched) return 'On hold';
     return 'Not started';
   }
 
@@ -776,7 +831,10 @@ import {
           ? Array.from({ length: stats.total }, (_, episodeIndex) => {
               const number = episodeIndex + 1;
               const status = episodeState(entry, number);
-              return `<button class="episode-button ${status}" type="button" data-episode-action="cycle" data-entry-id="${esc(entry.id)}" data-episode="${number}" aria-label="${esc(`${entry.title}, episode ${number}: ${status}`)}" title="${esc(`Episode ${number}: ${status}`)}"><span>E${String(number).padStart(2, '0')}</span><i></i></button>`;
+              const episodeCode = `E${String(number).padStart(2, '0')}`;
+              const episodeName = String(entry.episodeTitles?.[episodeIndex] || '').trim();
+              const episodeText = episodeName ? `${episodeCode}: ${episodeName}` : episodeCode;
+              return `<button class="episode-button ${status}" type="button" data-episode-action="cycle" data-entry-id="${esc(entry.id)}" data-episode="${number}" aria-label="${esc(`${entry.title}, ${episodeText}: ${status}`)}" title="${esc(`${episodeText}: ${status}`)}"><span class="episode-number">${episodeCode}</span>${episodeName ? `<span class="episode-name">${esc(episodeName)}</span>` : '<span class="episode-name episode-name-pending">Episode title unavailable</span>'}<i></i></button>`;
             }).join('')
           : '<div class="episode-empty">Episode count is not available from the provider.</div>';
         const episodeLabel = stats.total
@@ -2252,6 +2310,17 @@ import {
     const rating = Number(value) || 0;
     if (format === 'ten')
       return `<input id="modalRating" type="number" min="0" max="10" step="0.5" value="${rating || ''}" placeholder="Unrated" aria-label="Personal rating out of 10">`;
+    if (format === 'stars')
+      return `<div id="modalRating" class="star-rating-picker" role="radiogroup" aria-label="Personal star rating">${Array.from(
+        { length: 5 },
+        (_, index) => {
+          const fullValue = (index + 1) * 2;
+          const state = rating >= fullValue ? 'is-full' : rating === fullValue - 1 ? 'is-half' : '';
+          return `<span class="star-rating-unit ${state}"><span class="star-rating-glyph" aria-hidden="true">★</span><button type="button" class="star-rating-half star-rating-half-left" data-star-value="${fullValue - 1}" aria-label="${(fullValue - 1) / 2} stars" title="${(fullValue - 1) / 2} stars"></button><button type="button" class="star-rating-half star-rating-half-right" data-star-value="${fullValue}" aria-label="${fullValue / 2} stars" title="${fullValue / 2} stars"></button></span>`;
+        },
+      ).join(
+        '',
+      )}<span class="star-rating-caption">${rating ? `${rating / 2} / 5 STARS` : 'SELECT A RATING'}</span></div>`;
     const selectedTier = personalRatingTier(rating);
     return `<select id="modalRating" aria-label="Personal rating tier"><option value="">UNRATED</option>${personalTierOptions()
       .map(
@@ -2263,8 +2332,10 @@ import {
 
   function ratingScaleHelp(format = state.ratingFormat) {
     return format === 'ten'
-      ? 'Rate from 0 to 10 in half-point steps. Zero leaves the title unrated.'
-      : 'F = 1–3 // E = 4 // D = 5 // C = 6 // B = 7 // A = 8 // A+ = 9 // S = 10';
+      ? 'Rate this title privately from 0 to 10. Half-points are allowed; leave it blank if you do not want to rate it.'
+      : format === 'stars'
+        ? 'Choose from 0.5 to 5 stars in half-star steps. Your star rating is private and works with personal sorting.'
+        : 'Choose a private letter rating from F to S. The 10 equal steps are F, E, D, C, C+, B, B+, A, A+ and S.';
   }
 
   function openDetail(id) {
@@ -2289,7 +2360,7 @@ import {
       sc.overall ? `Overall ${sc.overall}` : '',
     ].filter(Boolean);
     $('#dialogBody').innerHTML =
-      `<div class="detail-hero">${bg ? `<img class="detail-bg" src="${esc(bg)}" alt="">` : ''}<div class="detail-heading"><div class="kicker">${x.rank ? `MASTER RANK #${String(x.rank).padStart(3, '0')}` : 'CUSTOM ADDITION'} // <span data-quality-rating>${esc(quality)}</span></div><h2>${esc(x.title)}</h2></div></div><div class="detail-content"><div class="detail-facts">${facts.map((f, index) => `<span class="fact" ${index === 1 ? 'data-quality-rating' : ''}>${esc(f)}</span>`).join('')}</div><div class="detail-grid"><div>${m.description ? `<h4>Synopsis</h4><p>${esc(m.description)}</p>` : '<p class="metadata-wait">Synopsis will appear when metadata is available.</p>'}${x.watch_note ? `<div class="callout"><h4>Watch note</h4><p>${esc(x.watch_note)}</p></div>` : ''}${x.caveat ? `<div class="callout"><h4>Worth knowing</h4><p>${esc(x.caveat)}</p></div>` : ''}${m.siteUrl ? `<a class="external-link" href="${esc(m.siteUrl)}" target="_blank" rel="noopener">OPEN SOURCE ↗</a>` : ''}<h4>Content</h4>${contentGuide(x, false)}${x.custom ? `${customEditorHTML(x)}${customPromotionHTML(x)}` : catalogCorrectionEditorHTML(x)}${canTrackEpisodes(x) ? `<div id="episodeTrackerMount" class="episode-tracker-mount" data-episode-owner="${esc(x.id)}" data-episode-variant="detail"></div>` : ''}${ops.length ? `<h4>Imported opinions</h4><div class="source-opinion-list">${ops.map((o) => `<div class="source-opinion"><b>${esc(o.label)}</b><span class="${o.verdict === 'recommend' ? 'yes' : 'no'}">${o.verdict === 'recommend' ? 'RECOMMENDED' : 'NOT RECOMMENDED'}</span></div>`).join('')}</div>` : ''}</div><aside aria-label="Personal title settings"><div class="user-edit"><button id="modalFavorite" class="favorite-detail ${isFavorite(id) ? 'active' : ''}" type="button">${isFavorite(id) ? '♥ FAVORITE' : '♡ ADD TO FAVORITES'}</button><div class="user-edit-label" id="recommendationLabel">MY RECOMMENDATION</div><div class="verdict-row" role="group" aria-labelledby="recommendationLabel"><button class="verdict-btn rec ${verdict === 'recommend' ? 'active' : ''}" data-v="recommend" type="button">RECOMMEND</button><button class="verdict-btn no ${verdict === 'avoid' ? 'active' : ''}" data-v="avoid" type="button">DON'T RECOMMEND</button><button class="verdict-btn neutral ${!verdict ? 'active' : ''}" data-v="" type="button">NEUTRAL</button></div><label for="modalStatus">WATCH STATUS</label><select id="modalStatus">${['Not started', 'Watching', 'Completed', 'On hold', 'Dropped'].map((s) => `<option ${p.status === s ? 'selected' : ''}>${s}</option>`).join('')}</select><div class="rating-format-head"><span>MY RATING</span><div class="rating-format-toggle" role="group" aria-label="Personal rating format"><button type="button" data-rating-format="ten">10 SCALE</button><button type="button" data-rating-format="tier">LETTER SCALE</button></div></div><div id="modalRatingEditor">${ratingEditorHTML(p.rating)}</div><small class="rating-scale-help" id="ratingScaleHelp">${esc(ratingScaleHelp())}</small><label for="modalNote">PRIVATE NOTE</label><textarea id="modalNote" maxlength="2000">${esc(p.note || '')}</textarea><button class="slash-button hot wide" id="saveDetail" type="button">${x.custom ? 'SAVE TITLE + LOCAL DATA' : 'SAVE LOCAL DATA'}</button>${x.custom ? '<button class="danger-button wide" id="removeCustomTitle" type="button">REMOVE CUSTOM TITLE</button>' : ''}</div></aside></div></div>`;
+      `<div class="detail-hero">${bg ? `<img class="detail-bg" src="${esc(bg)}" alt="">` : ''}<div class="detail-heading"><div class="kicker">${x.rank ? `MASTER RANK #${String(x.rank).padStart(3, '0')}` : 'CUSTOM ADDITION'} // <span data-quality-rating>${esc(quality)}</span></div><h2>${esc(x.title)}</h2></div></div><div class="detail-content"><div class="detail-facts">${facts.map((f, index) => `<span class="fact" ${index === 1 ? 'data-quality-rating' : ''}>${esc(f)}</span>`).join('')}</div><div class="detail-grid"><div>${m.description ? `<h4>Synopsis</h4><p>${esc(m.description)}</p>` : '<p class="metadata-wait">Synopsis will appear when metadata is available.</p>'}${x.watch_note ? `<div class="callout"><h4>Watch note</h4><p>${esc(x.watch_note)}</p></div>` : ''}${x.caveat ? `<div class="callout"><h4>Worth knowing</h4><p>${esc(x.caveat)}</p></div>` : ''}${m.siteUrl ? `<a class="external-link" href="${esc(m.siteUrl)}" target="_blank" rel="noopener">OPEN SOURCE ↗</a>` : ''}<h4>Content</h4>${contentGuide(x, false)}${x.custom ? `${customEditorHTML(x)}${customPromotionHTML(x)}` : catalogCorrectionEditorHTML(x)}${canTrackEpisodes(x) ? `<div id="episodeTrackerMount" class="episode-tracker-mount" data-episode-owner="${esc(x.id)}" data-episode-variant="detail"></div>` : ''}${ops.length ? `<h4>Imported opinions</h4><div class="source-opinion-list">${ops.map((o) => `<div class="source-opinion"><b>${esc(o.label)}</b><span class="${o.verdict === 'recommend' ? 'yes' : 'no'}">${o.verdict === 'recommend' ? 'RECOMMENDED' : 'NOT RECOMMENDED'}</span></div>`).join('')}</div>` : ''}</div><aside aria-label="Personal title settings"><div class="user-edit"><button id="modalFavorite" class="favorite-detail ${isFavorite(id) ? 'active' : ''}" type="button">${isFavorite(id) ? '♥ FAVORITE' : '♡ ADD TO FAVORITES'}</button><div class="user-edit-label" id="recommendationLabel">MY RECOMMENDATION</div><div class="verdict-row" role="group" aria-labelledby="recommendationLabel"><button class="verdict-btn rec ${verdict === 'recommend' ? 'active' : ''}" data-v="recommend" type="button">RECOMMEND</button><button class="verdict-btn no ${verdict === 'avoid' ? 'active' : ''}" data-v="avoid" type="button">DON'T RECOMMEND</button><button class="verdict-btn neutral ${!verdict ? 'active' : ''}" data-v="" type="button">NEUTRAL</button></div><label for="modalStatus">WATCH STATUS</label><select id="modalStatus">${['Not started', 'Watching', 'Completed', 'On hold', 'Dropped'].map((s) => `<option ${p.status === s ? 'selected' : ''}>${s}</option>`).join('')}</select><div class="rating-format-head"><span>MY RATING</span><div class="rating-format-toggle rating-format-toggle-three" role="group" aria-label="Personal rating format"><button type="button" data-rating-format="ten">10 SCALE</button><button type="button" data-rating-format="tier">LETTER SCALE</button><button type="button" data-rating-format="stars">STAR SCALE</button></div></div><div id="modalRatingEditor">${ratingEditorHTML(p.rating)}</div><small class="rating-scale-help" id="ratingScaleHelp">${esc(ratingScaleHelp())}</small><label for="modalNote">PRIVATE NOTE</label><textarea id="modalNote" maxlength="2000">${esc(p.note || '')}</textarea><button class="slash-button hot wide" id="saveDetail" type="button">${x.custom ? 'SAVE TITLE + LOCAL DATA' : 'SAVE LOCAL DATA'}</button>${x.custom ? '<button class="danger-button wide" id="removeCustomTitle" type="button">REMOVE CUSTOM TITLE</button>' : ''}</div></aside></div></div>`;
     $('#dialogBody').dataset.itemId = id;
     $('#modalFavorite').onclick = () => {
       toggleFavorite(id);
@@ -2314,9 +2385,20 @@ import {
         button.classList.toggle('active', active);
         button.setAttribute('aria-pressed', String(active));
       });
-      $('#modalRating').addEventListener('input', (event) => {
+      const updateDraftRating = (event) => {
         draftRating = Number(event.target.value) || 0;
-      });
+      };
+      const ratingInput = $('#modalRating');
+      if (ratingInput instanceof HTMLInputElement || ratingInput instanceof HTMLSelectElement) {
+        ratingInput.addEventListener('input', updateDraftRating);
+        ratingInput.addEventListener('change', updateDraftRating);
+      }
+      $$('[data-star-value]', $('#modalRatingEditor')).forEach((button) =>
+        button.addEventListener('click', () => {
+          draftRating = Number(button.dataset.starValue) || 0;
+          renderPersonalRating();
+        }),
+      );
     };
     $$('[data-rating-format]', $('#dialogBody')).forEach((button) =>
       button.addEventListener('click', () => {
@@ -2327,7 +2409,7 @@ import {
         $$('.title-card').forEach((card) => {
           const cardItem = itemById(card.dataset.id);
           const badge = $('.tier', card);
-          if (cardItem && badge) badge.textContent = qualityRatingLabel(cardItem.tier, state.ratingFormat);
+          if (cardItem && badge) badge.innerHTML = qualityRatingBadgeHTML(cardItem.tier);
         });
         const visibleQuality = qualityRatingLabel(x.tier, state.ratingFormat, {
           suffix: state.ratingFormat === 'ten',
@@ -2764,7 +2846,7 @@ import {
   $('#addTitleType').addEventListener('change', (event) => {
     if (event.target.value === 'Adult / Hentai') $('#addTitleAdult').checked = true;
   });
-  $('#dialogClose').addEventListener('click', () => $('#detailDialog').close());
+  $('#dialogClose')?.addEventListener('click', () => $('#detailDialog').close());
   $('#collectionClose').addEventListener('click', () => $('#collectionDialog').close());
   $('#detailDialog').addEventListener('click', (e) => {
     if (e.target === $('#detailDialog')) $('#detailDialog').close();

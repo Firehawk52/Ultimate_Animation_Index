@@ -225,7 +225,8 @@ test('AniList series entries retain main sequence and OVA side-story relations',
     seasonYear: 2026,
     startDate: { year: 2026, month: 4, day: 9 },
     format: 'SPECIAL',
-    episodes: null,
+    episodes: 2,
+    idMal: 12345,
     relations: {
       edges: [
         { relationType: 'SEQUEL', node: { id: 43, type: 'ANIME', format: 'TV' } },
@@ -237,7 +238,8 @@ test('AniList series entries retain main sequence and OVA side-story relations',
   });
 
   assert.equal(entry.id, '42');
-  assert.equal(entry.episodes, 1);
+  assert.equal(entry.episodes, 2);
+  assert.equal(entry.malId, 12345);
   assert.equal(entry.startDate, '2026-04-09');
   assert.deepEqual(entry.relations, [
     { id: '43', type: 'SEQUEL' },
@@ -267,9 +269,9 @@ test('TVMaze episodes are grouped into seasons with status-aware refresh behavio
     averageRuntime: 42,
     _embedded: {
       episodes: [
-        { id: 1, season: 1, number: 1, airdate: '2024-01-01' },
-        { id: 2, season: 1, number: 2, airdate: '2024-01-08' },
-        { id: 3, season: 2, number: 1, airdate: '2025-02-01' },
+        { id: 1, season: 1, number: 1, name: 'Pilot', airdate: '2024-01-01' },
+        { id: 2, season: 1, number: 2, name: 'Second Step', airdate: '2024-01-08' },
+        { id: 3, season: 2, number: 1, name: 'Return', airdate: '2025-02-01' },
       ],
     },
   });
@@ -277,6 +279,7 @@ test('TVMaze episodes are grouped into seasons with status-aware refresh behavio
   assert.equal(ended.entries.length, 2);
   assert.equal(ended.entries[0].title, 'Example Show Season 1');
   assert.equal(ended.entries[0].episodes, 2);
+  assert.deepEqual(ended.entries[0].episodeTitles, ['Pilot', 'Second Step']);
   assert.equal(ended.entries[1].startDate, '2025-02-01');
   assert.equal(tvMazeSeriesNeedsRefresh(ended), false);
   assert.equal(tvMazeSeriesNeedsRefresh({ ...ended, showStatus: 'Running' }), true);
