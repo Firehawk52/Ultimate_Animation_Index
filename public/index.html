@@ -14,10 +14,10 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
-      href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:ital,wght@0,600;0,700;0,800;1,700&family=Space+Grotesk:wght@400;500;600;700&display=swap"
+      href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:ital,wght@0,600;0,700;0,800;1,700&family=Michroma&family=Space+Grotesk:wght@400;500;600;700&display=swap"
       rel="stylesheet"
     />
-    <link rel="stylesheet" href="styles.css?v=2.3.1-adult-filters-1" />
+    <link rel="stylesheet" href="styles.css?v=2.3.2-michroma-numerics-1" />
   </head>
   <body>
     <a class="skip-link" href="#mainContent">Skip to content</a>
@@ -57,7 +57,7 @@
       </button>
       <button class="rail-tab" data-tab="collections" type="button"><b>02</b><span>COLLECTIONS</span></button>
       <button class="rail-tab" data-tab="franchises" type="button"><b>03</b><span>FRANCHISES</span></button>
-      <button class="rail-tab" data-tab="adult" type="button"><b>04</b><span>ADULT</span></button>
+      <button class="rail-tab" data-tab="adult" type="button"><b>04</b><span>MATURE</span></button>
       <button class="rail-tab" data-tab="favorites" type="button"><b>05</b><span>FAVORITES</span></button>
       <button class="rail-tab" data-tab="userlist" type="button"><b>06</b><span>MY LIBRARY</span></button>
     </nav>
@@ -208,15 +208,16 @@
       <section id="adultTab" class="panel">
         <header class="section-head angled-head adult-head">
           <div>
-            <div class="kicker">ADULT CONTENT</div>
-            <h2>ADULT</h2>
+            <div class="kicker">CONTENT GUIDANCE</div>
+            <h2>MATURE CONTENT</h2>
           </div>
           <p>
-            Filter adult titles by type or content. Content levels are shown in plain language on each title.
+            Filter mature, intense or sensitive titles by type and content guidance. Content levels are shown
+            in plain language on each title.
           </p>
         </header>
         <div class="adult-controls">
-          <button class="adult-chip active" data-adult="all" type="button">ALL ADULT</button>
+          <button class="adult-chip active" data-adult="all" type="button">ALL MATURE CONTENT</button>
           <button class="adult-chip" data-adult="ecchi" type="button">ECCHI</button>
           <button class="adult-chip" data-adult="erotic" type="button">EROTIC</button>
           <button class="adult-chip" data-adult="hentai" type="button">HENTAI</button>
@@ -230,20 +231,20 @@
             <input
               id="adultSearch"
               type="search"
-              placeholder="Search adult titles, genres or studios"
+              placeholder="Search mature titles, genres or studios"
               autocomplete="off"
             />
           </div>
-          <select id="adultTierFilter" aria-label="Adult quality tier">
+          <select id="adultTierFilter" aria-label="Mature Content quality tier">
             <option value="">ALL TIERS</option>
           </select>
-          <select id="adultTypeFilter" aria-label="Adult format">
+          <select id="adultTypeFilter" aria-label="Mature Content format">
             <option value="">ALL FORMATS</option>
           </select>
-          <select id="adultGenreFilter" aria-label="Adult genre">
+          <select id="adultGenreFilter" aria-label="Mature Content genre">
             <option value="">ALL GENRES</option>
           </select>
-          <select id="adultStatusFilter" aria-label="Adult watch status">
+          <select id="adultStatusFilter" aria-label="Mature Content watch status">
             <option value="">ALL STATUS</option>
             <option>Not started</option>
             <option>Watching</option>
@@ -251,7 +252,7 @@
             <option>On hold</option>
             <option>Dropped</option>
           </select>
-          <select id="adultSort" aria-label="Sort Adult titles by">
+          <select id="adultSort" aria-label="Sort Mature Content titles by">
             <option value="rank">MASTER RANK</option>
             <option value="overall">OVERALL SCORE</option>
             <option value="production">PRODUCTION</option>
@@ -410,8 +411,8 @@
               <label class="adult-catalog-toggle add-adult-toggle">
                 <input id="addTitleAdult" type="checkbox" />
                 <span aria-hidden="true"></span>
-                <b>ADD TO ADULT</b>
-                <small>Show this custom title in the Adult section.</small>
+                <b>ADD TO MATURE CONTENT</b>
+                <small>Show this custom title in the Mature Content section.</small>
               </label>
               <button class="slash-button wide" type="submit">RESOLVE + ADD</button>
             </form>
@@ -551,6 +552,6 @@
     </dialog>
 
     <div class="toast" id="toast" popover="manual"></div>
-    <script type="module" src="app.js?v=2.3.1-adult-filters-1"></script>
+    <script type="module" src="app.js?v=2.3.2-mature-content-cards-1"></script>
   </body>
 </html>

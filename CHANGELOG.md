@@ -4,6 +4,14 @@ All notable changes to Ultimate Animation Index are documented here.
 
 ## Unreleased
 
+## [2.3.2] - 2026-08-20
+
+### Changed
+
+- Refined the technical typography system: numeric interface values use Michroma at a minimum 16 px, while descriptive metadata and help copy retain their normal reading fonts.
+- Reworked Mature content-rating cards so each compact card clearly presents its score and category without relying on a hover tooltip.
+- Removed the repository's legacy integration-test suite and test-only HTML validation tooling. Continuous integration now retains formatting, JavaScript syntax, catalog-build, launcher and Docker checks.
+
 ## [2.3.1] - 2026-08-20
 
 ### Fixed

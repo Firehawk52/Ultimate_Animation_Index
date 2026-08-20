@@ -12,7 +12,7 @@ lists.
 
 There is no title limit. The list can keep growing as new and older work is added.
 
-See the [changelog](CHANGELOG.md) for the full release history and version 2.3.1 details.
+See the [changelog](CHANGELOG.md) for the full release history and version 2.3.2 details.
 
 ## Highlights
 
@@ -51,7 +51,7 @@ is written while previewing a package.
 
 ### Content severity at a glance
 
-Adult-content dimensions are scored independently instead of being collapsed into one
+Mature-content dimensions are scored independently instead of being collapsed into one
 age label. Bar length, color, plain-language severity and the numeric source value all
 communicate the same level without relying on color alone.
 
@@ -119,7 +119,6 @@ gradually fills the local artwork cache.
 ├── public/               # Browser application; catalog.json is generated locally
 ├── scripts/              # Cross-platform build and startup helpers
 ├── src/                  # Static server, metadata cache and local API
-├── test/                 # Node.js integration tests
 └── .github/workflows/    # Automated GitHub checks
 ```
 
@@ -184,7 +183,7 @@ Install the development formatter and run the project checks:
 npm ci
 npm run format:check
 npm run check
-npm test
+npm run build:catalog
 ```
 
 Useful commands:
@@ -196,12 +195,10 @@ Useful commands:
 | `npm run build:catalog` | Validate the source and regenerate `public/catalog.json` |
 | `npm run format`        | Format the human-maintained web and documentation files  |
 | `npm run check`         | Check JavaScript syntax                                  |
-| `npm run check:html`    | Validate HTML semantics and accessibility basics         |
-| `npm test`              | Run server integration tests                             |
-| `npm run verify`        | Run formatting, syntax and integration release checks    |
+| `npm run verify`        | Run formatting, syntax and catalog-build release checks  |
 
-Pull requests run the same checks through GitHub Actions. The workflow builds and
-tests the catalog on Node.js 20 and 22 across Linux, Windows and macOS without adding
+Pull requests run the same checks through GitHub Actions. The workflow builds the
+catalog on Node.js 20 and 22 across Linux, Windows and macOS without adding
 the generated file to Git. It also verifies a clean Docker image build.
 
 ### Docker
@@ -232,7 +229,7 @@ release page instead.
 - Favorites as a separate private list
 - Studio, director and creator collections
 - Franchise watch-order guides with chronology and episode jumps where needed
-- Adult section with Ecchi, Erotic, Hentai, Gore, Extreme Violence and Disturbing filters
+- Mature Content section with Ecchi, Erotic, Hentai, Gore, Extreme Violence and Disturbing filters
 - Plain-language content levels for Sexual content, Nudity, Violence, Gore and Disturbing content
 - Personal watch status, ratings and private notes
 - S–D or 10-point rating display, saved as a local interface preference

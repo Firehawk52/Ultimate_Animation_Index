@@ -45,8 +45,6 @@ npm run format
 npm run verify
 ```
 
-`npm test` rebuilds the catalog before running the integration tests.
-
 ## Pull requests
 
 Describe the user-visible outcome, note any data migrations or compatibility risks,

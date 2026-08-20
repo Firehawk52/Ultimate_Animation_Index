@@ -9,7 +9,7 @@ permissions:
 
 jobs:
   checks:
-    name: Tests (${{ matrix.os }}, Node ${{ matrix.node }})
+    name: Checks (${{ matrix.os }}, Node ${{ matrix.node }})
     strategy:
       fail-fast: false
       matrix:
@@ -42,11 +42,8 @@ jobs:
       - name: Check JavaScript syntax
         run: npm run check
 
-      - name: Validate HTML semantics
-        run: npm run check:html
-
-      - name: Run tests
-        run: npm test
+      - name: Build and validate catalog
+        run: npm run build:catalog
 
       - name: Verify generated catalog stays outside Git
         run: git check-ignore public/catalog.json

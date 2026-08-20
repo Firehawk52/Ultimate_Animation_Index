@@ -8,7 +8,7 @@ import {
 
 (async () => {
   'use strict';
-  const APP_VERSION = '2.3.1';
+  const APP_VERSION = '2.3.2';
   const catalogResponse = await fetch('catalog.json');
   if (!catalogResponse.ok) throw new Error(`Could not load catalog (${catalogResponse.status})`);
   const CAT = await catalogResponse.json();
@@ -248,6 +248,7 @@ import {
       ),
       (tier) => qualityRatingLabel(tier, state.ratingFormat, { suffix: state.ratingFormat === 'ten' }),
     );
+    renderStarTierFilter('adultTierFilter', 'adultStarTierFilter');
     fill($('#adultTypeFilter'), [...new Set(items.map(displayType).filter(Boolean))].sort());
     fill($('#adultGenreFilter'), [...new Set(items.flatMap(liveGenres).filter(Boolean))].sort());
   }
@@ -265,23 +266,23 @@ import {
     if ([...sel.options].some((option) => option.value === selected)) sel.value = selected;
   }
 
-  function renderStarTierFilter() {
-    const native = $('#tierFilter');
-    const existing = $('#starTierFilter');
+  function renderStarTierFilter(nativeId = 'tierFilter', controlId = 'starTierFilter') {
+    const native = $('#' + nativeId);
+    const existing = $('#' + controlId);
     if (existing) existing.remove();
     const usesStars = state.ratingFormat === 'stars';
     native.classList.toggle('star-tier-native', usesStars);
     if (!usesStars) return;
 
     const control = document.createElement('div');
-    control.id = 'starTierFilter';
+    control.id = controlId;
     control.className = 'star-tier-filter';
     native.insertAdjacentElement('afterend', control);
 
     const render = () => {
       const selected = native.options[native.selectedIndex];
       const selectedLabel = selected.value ? qualityRatingBadgeHTML(selected.value) : 'ALL TIERS';
-      control.innerHTML = `<button type="button" class="star-tier-trigger" aria-haspopup="listbox" aria-expanded="false">${selectedLabel}<span class="star-tier-chevron" aria-hidden="true"></span></button><div class="star-tier-menu" role="listbox" aria-label="Quality tier">${[
+      control.innerHTML = `<button type="button" class="star-tier-trigger" aria-haspopup="listbox" aria-expanded="false">${selectedLabel}<span class="star-tier-chevron" aria-hidden="true"></span></button><div class="star-tier-menu" role="listbox" aria-label="${esc(native.getAttribute('aria-label') || 'Quality tier')}">${[
         ...native.options,
       ]
         .map(
@@ -490,18 +491,18 @@ import {
   function contentGuide(x, compact = false) {
     const c = x.content || {};
     const defs = [
-      ['Sexual content', c.sex || 0],
-      ['Nudity', c.nudity || 0],
-      ['Violence', c.violence || 0],
-      ['Gore', c.gore || 0],
-      ['Disturbing content', c.disturbing || 0],
+      ['Sexual content', 'Sexual', c.sex || 0],
+      ['Nudity', 'Nudity', c.nudity || 0],
+      ['Violence', 'Violence', c.violence || 0],
+      ['Gore', 'Gore', c.gore || 0],
+      ['Disturbing content', 'Disturbing', c.disturbing || 0],
     ];
     const words = ['None', 'Mild', 'Moderate', 'Strong', 'Very strong', 'Extreme'];
     return `<div class="content-guide ${compact ? 'compact' : ''}" role="list" aria-label="Content guide">${defs
-      .map(([label, raw]) => {
+      .map(([label, compactLabel, raw]) => {
         const v = Math.max(0, Math.min(5, Number(raw) || 0));
         const summary = `${label}: ${words[v]}, ${v}/5`;
-        return `<div class="content-severity-card severity-${v}" role="listitem" aria-label="${esc(summary)}" data-tooltip="${esc(summary)}"><span class="content-card-label">${esc(label)}</span><span class="content-card-score"><b>${v}</b><em>/5</em></span><strong>${esc(words[v])}</strong></div>`;
+        return `<div class="content-severity-card severity-${v}" role="listitem" aria-label="${esc(summary)}" data-tooltip="${esc(summary)}"><span class="content-card-label">${esc(compact ? compactLabel : label)}</span><span class="content-card-score"><b>${v}</b></span><strong>${esc(words[v])}</strong></div>`;
       })
       .join('')}</div>`;
   }
@@ -546,7 +547,7 @@ import {
     const covers = Math.max(browserCovers, Number(state.serverCovers) || 0),
       coverTotal = Math.max(items.length, Number(state.serverCoverTotal) || 0);
     $('#statStrip').innerHTML =
-      `<div class="stat"><b>${items.length}</b><span>TITLES</span></div><div class="stat"><b>${films}</b><span>FILMS / FILM SERIES</span></div><div class="stat"><b>${CAT.collections.length}</b><span>COLLECTIONS</span></div><div class="stat"><b>${CAT.franchises.length}</b><span>FRANCHISE GUIDES</span></div><div class="stat"><b>${covers}/${coverTotal}</b><span>${state.serverCoverRunning ? 'ARTWORK CACHING' : 'ARTWORK CACHED'}</span></div><div class="stat"><b>${favCount}</b><span>FAVORITES</span></div><div class="stat"><b>${completed}${watching ? ` + ${watching}` : ''}</b><span>${watching ? 'COMPLETED + WATCHING' : 'COMPLETED'}</span></div>`;
+      `<div class="stat"><b>${items.length}</b><span>TITLES</span></div><div class="stat"><b>${films}</b><span>FILMS / FILM SERIES</span></div><div class="stat"><b>${CAT.collections.length}</b><span>COLLECTIONS</span></div><div class="stat"><b>${CAT.franchises.length}</b><span>FRANCHISE GUIDES</span></div><div class="stat"><b>${covers}<strong class="stat-operator">/</strong>${coverTotal}</b><span>${state.serverCoverRunning ? 'ARTWORK CACHING' : 'ARTWORK CACHED'}</span></div><div class="stat"><b>${favCount}</b><span>FAVORITES</span></div><div class="stat"><b>${completed}${watching ? `<strong class="stat-operator">+</strong>${watching}` : ''}</b><span>${watching ? 'COMPLETED + WATCHING' : 'COMPLETED'}</span></div>`;
     renderUserSummary();
   }
 
@@ -635,7 +636,7 @@ import {
   }
   function updateAdultChipCounts() {
     const labels = {
-      all: 'ALL ADULT',
+      all: 'ALL MATURE CONTENT',
       ecchi: 'ECCHI',
       erotic: 'EROTIC',
       hentai: 'HENTAI',
@@ -654,7 +655,7 @@ import {
     const root = $('#adultCards');
     root.innerHTML = arr.length
       ? arr.map((x) => cardHTML(x, { adult: true })).join('')
-      : `<div class="empty-state">${$('#adultSearch').value.trim() ? 'No Adult titles match that search.' : 'No current master titles carry this tag.'}</div>`;
+      : `<div class="empty-state">${$('#adultSearch').value.trim() ? 'No Mature Content titles match that search.' : 'No current master titles carry this tag.'}</div>`;
     bindCards(root);
     queueMetadata(arr, { priority: true });
   }
@@ -1957,7 +1958,7 @@ import {
   }
 
   function adultCatalogToggleHTML(content, id) {
-    return `<label class="adult-catalog-toggle" for="${id}"><input id="${id}" type="checkbox" ${isAdultCatalogTitle(content) ? 'checked' : ''}><span aria-hidden="true"></span><b>PROMOTE TO ADULT</b><small>Explicitly includes this title in the Adult section.</small></label>`;
+    return `<label class="adult-catalog-toggle" for="${id}"><input id="${id}" type="checkbox" ${isAdultCatalogTitle(content) ? 'checked' : ''}><span aria-hidden="true"></span><b>PROMOTE TO MATURE CONTENT</b><small>Explicitly includes this title in the Mature Content section.</small></label>`;
   }
 
   function catalogCorrectionEditorHTML(x) {
@@ -2377,7 +2378,7 @@ import {
         },
       ).join(
         '',
-      )}<span class="star-rating-caption">${rating ? `${rating / 2} / 5 STARS` : 'SELECT A RATING'}</span></div>`;
+      )}<span class="star-rating-caption">${rating ? `<span class="star-rating-value">${rating / 2} / 5</span> STARS` : 'SELECT A RATING'}</span></div>`;
     const selectedTier = personalRatingTier(rating);
     return `<select id="modalRating" aria-label="Personal rating tier"><option value="">UNRATED</option>${personalTierOptions()
       .map(
@@ -2408,16 +2409,16 @@ import {
       suffix: state.ratingFormat === 'ten',
     });
     const facts = [
-      x.rank ? `#${x.rank}` : 'CUSTOM',
-      quality,
-      displayType(x),
-      liveYear(x),
-      x.origin,
-      m.studio,
-      sc.overall ? `Overall ${sc.overall}` : '',
-    ].filter(Boolean);
+      { value: x.rank ? `#${x.rank}` : 'CUSTOM' },
+      { value: quality },
+      { value: displayType(x) },
+      { value: liveYear(x) },
+      { value: x.origin },
+      { value: m.studio },
+      { value: sc.overall ? `Overall ${sc.overall}` : '' },
+    ].filter((fact) => fact.value);
     $('#dialogBody').innerHTML =
-      `<div class="detail-hero">${bg ? `<img class="detail-bg" src="${esc(bg)}" alt="">` : ''}<div class="detail-heading"><div class="kicker">${x.rank ? `MASTER RANK #${String(x.rank).padStart(3, '0')}` : 'CUSTOM ADDITION'} // <span data-quality-rating>${esc(quality)}</span></div><h2>${esc(x.title)}</h2></div></div><div class="detail-content"><div class="detail-facts">${facts.map((f, index) => `<span class="fact" ${index === 1 ? 'data-quality-rating' : ''}>${esc(f)}</span>`).join('')}</div><div class="detail-grid"><div>${m.description ? `<h4>Synopsis</h4><p>${esc(m.description)}</p>` : '<p class="metadata-wait">Synopsis will appear when metadata is available.</p>'}${x.watch_note ? `<div class="callout"><h4>Watch note</h4><p>${esc(x.watch_note)}</p></div>` : ''}${x.caveat ? `<div class="callout"><h4>Worth knowing</h4><p>${esc(x.caveat)}</p></div>` : ''}${m.siteUrl ? `<a class="external-link" href="${esc(m.siteUrl)}" target="_blank" rel="noopener">OPEN SOURCE ↗</a>` : ''}<h4>Content</h4>${contentGuide(x, false)}${x.custom ? `${customEditorHTML(x)}${customPromotionHTML(x)}` : catalogCorrectionEditorHTML(x)}${canTrackEpisodes(x) ? `<div id="episodeTrackerMount" class="episode-tracker-mount" data-episode-owner="${esc(x.id)}" data-episode-variant="detail"></div>` : ''}${ops.length ? `<h4>Imported opinions</h4><div class="source-opinion-list">${ops.map((o) => `<div class="source-opinion"><b>${esc(o.label)}</b><span class="${o.verdict === 'recommend' ? 'yes' : 'no'}">${o.verdict === 'recommend' ? 'RECOMMENDED' : 'NOT RECOMMENDED'}</span></div>`).join('')}</div>` : ''}</div><aside aria-label="Personal title settings"><div class="user-edit"><button id="modalFavorite" class="favorite-detail ${isFavorite(id) ? 'active' : ''}" type="button">${isFavorite(id) ? '♥ FAVORITE' : '♡ ADD TO FAVORITES'}</button><div class="user-edit-label" id="recommendationLabel">MY RECOMMENDATION</div><div class="verdict-row" role="group" aria-labelledby="recommendationLabel"><button class="verdict-btn rec ${verdict === 'recommend' ? 'active' : ''}" data-v="recommend" type="button">RECOMMEND</button><button class="verdict-btn no ${verdict === 'avoid' ? 'active' : ''}" data-v="avoid" type="button">DON'T RECOMMEND</button><button class="verdict-btn neutral ${!verdict ? 'active' : ''}" data-v="" type="button">NEUTRAL</button></div><label for="modalStatus">WATCH STATUS</label><select id="modalStatus">${['Not started', 'Watching', 'Completed', 'On hold', 'Dropped'].map((s) => `<option ${p.status === s ? 'selected' : ''}>${s}</option>`).join('')}</select><div class="rating-format-head"><span>MY RATING</span></div><div id="modalRatingEditor">${ratingEditorHTML(p.rating)}</div><small class="rating-scale-help" id="ratingScaleHelp">${esc(ratingScaleHelp())}</small><label for="modalNote">PRIVATE NOTE</label><textarea id="modalNote" maxlength="2000">${esc(p.note || '')}</textarea><button class="slash-button hot wide" id="saveDetail" type="button">${x.custom ? 'SAVE TITLE + LOCAL DATA' : 'SAVE LOCAL DATA'}</button>${x.custom ? '<button class="danger-button wide" id="removeCustomTitle" type="button">REMOVE CUSTOM TITLE</button>' : ''}</div></aside></div></div>`;
+      `<div class="detail-hero">${bg ? `<img class="detail-bg" src="${esc(bg)}" alt="">` : ''}<div class="detail-heading"><div class="kicker">${x.rank ? `MASTER RANK #${String(x.rank).padStart(3, '0')}` : 'CUSTOM ADDITION'} // ${esc(quality)}</div><h2>${esc(x.title)}</h2></div></div><div class="detail-content"><div class="detail-facts">${facts.map((fact) => `<span class="fact">${esc(fact.value)}</span>`).join('')}</div><div class="detail-grid"><div>${m.description ? `<h4>Synopsis</h4><p>${esc(m.description)}</p>` : '<p class="metadata-wait">Synopsis will appear when metadata is available.</p>'}${x.watch_note ? `<div class="callout"><h4>Watch note</h4><p>${esc(x.watch_note)}</p></div>` : ''}${x.caveat ? `<div class="callout"><h4>Worth knowing</h4><p>${esc(x.caveat)}</p></div>` : ''}${m.siteUrl ? `<a class="external-link" href="${esc(m.siteUrl)}" target="_blank" rel="noopener">OPEN SOURCE ↗</a>` : ''}<h4>Content</h4>${contentGuide(x, false)}${x.custom ? `${customEditorHTML(x)}${customPromotionHTML(x)}` : catalogCorrectionEditorHTML(x)}${canTrackEpisodes(x) ? `<div id="episodeTrackerMount" class="episode-tracker-mount" data-episode-owner="${esc(x.id)}" data-episode-variant="detail"></div>` : ''}${ops.length ? `<h4>Imported opinions</h4><div class="source-opinion-list">${ops.map((o) => `<div class="source-opinion"><b>${esc(o.label)}</b><span class="${o.verdict === 'recommend' ? 'yes' : 'no'}">${o.verdict === 'recommend' ? 'RECOMMENDED' : 'NOT RECOMMENDED'}</span></div>`).join('')}</div>` : ''}</div><aside aria-label="Personal title settings"><div class="user-edit"><button id="modalFavorite" class="favorite-detail ${isFavorite(id) ? 'active' : ''}" type="button">${isFavorite(id) ? '♥ FAVORITE' : '♡ ADD TO FAVORITES'}</button><div class="user-edit-label" id="recommendationLabel">MY RECOMMENDATION</div><div class="verdict-row" role="group" aria-labelledby="recommendationLabel"><button class="verdict-btn rec ${verdict === 'recommend' ? 'active' : ''}" data-v="recommend" type="button">RECOMMEND</button><button class="verdict-btn no ${verdict === 'avoid' ? 'active' : ''}" data-v="avoid" type="button">DON'T RECOMMEND</button><button class="verdict-btn neutral ${!verdict ? 'active' : ''}" data-v="" type="button">NEUTRAL</button></div><label for="modalStatus">WATCH STATUS</label><select id="modalStatus">${['Not started', 'Watching', 'Completed', 'On hold', 'Dropped'].map((s) => `<option ${p.status === s ? 'selected' : ''}>${s}</option>`).join('')}</select><div class="rating-format-head"><span>MY RATING</span></div><div id="modalRatingEditor">${ratingEditorHTML(p.rating)}</div><small class="rating-scale-help" id="ratingScaleHelp">${esc(ratingScaleHelp())}</small><label for="modalNote">PRIVATE NOTE</label><textarea id="modalNote" maxlength="2000">${esc(p.note || '')}</textarea><button class="slash-button hot wide" id="saveDetail" type="button">${x.custom ? 'SAVE TITLE + LOCAL DATA' : 'SAVE LOCAL DATA'}</button>${x.custom ? '<button class="danger-button wide" id="removeCustomTitle" type="button">REMOVE CUSTOM TITLE</button>' : ''}</div></aside></div></div>`;
     $('#dialogBody').dataset.itemId = id;
     $('#modalFavorite').onclick = () => {
       toggleFavorite(id);
