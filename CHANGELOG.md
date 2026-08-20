@@ -4,6 +4,12 @@ All notable changes to Ultimate Animation Index are documented here.
 
 ## Unreleased
 
+## [2.2.6] - 2026-08-20
+
+### Fixed
+
+- Replaced the legacy, non-comparable `Niche` catalog label with the established `B+` tier for all 26 affected titles. Each already has an Overall score of 76, matching the existing `B+` band, so letter, numeric and star filters now remain internally consistent.
+
 ## [2.2.5] - 2026-08-20
 
 ### Added
