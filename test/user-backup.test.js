@@ -49,6 +49,10 @@ function userData() {
       collectionSortOrder: 'desc',
       masterSortOrder: 'asc',
       adultSearch: 'gore',
+      adultTierFilter: 'A+',
+      adultTypeFilter: 'TV',
+      adultGenreFilter: 'Drama',
+      adultStatusFilter: 'Watching',
       adultSort: 'myrating',
       adultSortOrder: 'desc',
       hideCompleted: false,
@@ -74,6 +78,10 @@ test('private user backups preserve all supported local user data', () => {
   assert.equal(restored.data.ui.collectionSortOrder, 'desc');
   assert.equal(restored.data.ui.masterSortOrder, 'asc');
   assert.equal(restored.data.ui.adultSearch, 'gore');
+  assert.equal(restored.data.ui.adultTierFilter, 'A+');
+  assert.equal(restored.data.ui.adultTypeFilter, 'TV');
+  assert.equal(restored.data.ui.adultGenreFilter, 'Drama');
+  assert.equal(restored.data.ui.adultStatusFilter, 'Watching');
   assert.equal(restored.data.ui.adultSort, 'myrating');
   assert.equal(restored.data.ui.adultSortOrder, 'desc');
   assert.equal(restored.data.customTitles[0].scores.overall, 84);

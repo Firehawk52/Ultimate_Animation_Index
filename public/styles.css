@@ -1393,7 +1393,7 @@ body:after {
 }
 .adult-tools {
   display: grid;
-  grid-template-columns: minmax(240px, 1fr) minmax(170px, 220px) 112px;
+  grid-template-columns: minmax(240px, 1.4fr) repeat(4, minmax(112px, 0.62fr)) minmax(155px, 0.78fr) 112px;
   gap: 8px;
   align-items: stretch;
   margin: 0 0 20px;
@@ -3568,6 +3568,15 @@ textarea:focus-visible,
   }
 }
 
+@media (max-width: 1080px) {
+  .adult-tools {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+  .adult-tools .search-block {
+    grid-column: 1 / -1;
+  }
+}
+
 @media (max-width: 640px) {
   .adult-tools {
     grid-template-columns: minmax(0, 1fr) 112px;
@@ -4332,7 +4341,8 @@ textarea:focus-visible,
   background: #191e28;
   border-color: #8d98a9;
 }
-.toolbar-shell select option {
+.toolbar-shell select option,
+.adult-tools select option {
   background: #11151d;
   color: #f4f6f8;
 }

@@ -30,15 +30,19 @@ test('every catalog search uses the shared labeled search component', () => {
   assert.equal((html.match(/class="search-block"/g) || []).length, searchIds.length);
 });
 
-test('Adult titles have independent Master-style search and sorting controls', () => {
+test('Adult titles have independent Master-style search, filters and sorting controls', () => {
   const adultSort = html.match(/<select id="adultSort"[\s\S]*?<\/select>/)?.[0] || '';
+  for (const id of ['adultTierFilter', 'adultTypeFilter', 'adultGenreFilter', 'adultStatusFilter']) {
+    assert.match(html, new RegExp(`<select id="${id}"`));
+  }
   assert.match(html, /<select id="adultSort" aria-label="Sort Adult titles by">/);
   for (const value of ['rank', 'overall', 'production', 'story', 'emotional', 'year', 'title', 'myrating']) {
     assert.match(adultSort, new RegExp(`<option value="${value}">`));
   }
   assert.match(html, /<button\s+id="adultSortOrder"\s+class="master-sort-order"/);
   assert.match(appSource, /function filteredAdult\(\)/);
-  assert.match(appSource, /sortTitleItems\(filtered, sort, state\.adultSortOrder\)/);
+  assert.match(appSource, /function populateAdultFilters\(\)/);
+  assert.match(appSource, /sortTitleItems\(narrowed, sort, state\.adultSortOrder\)/);
 });
 
 test('rating format is a global My Library preference with one required onboarding choice', () => {

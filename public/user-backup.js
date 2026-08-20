@@ -190,6 +190,10 @@ function validateUI(value) {
     'statusFilter',
     'sortSelect',
     'adultSearch',
+    'adultTierFilter',
+    'adultTypeFilter',
+    'adultGenreFilter',
+    'adultStatusFilter',
     'adultSort',
     'collectionSearch',
     'franchiseSearch',
@@ -248,7 +252,7 @@ export function validateUserBackup(input) {
   };
 }
 
-export function createUserBackup(data, { createdAt = new Date().toISOString(), appVersion = '2.3.0' } = {}) {
+export function createUserBackup(data, { createdAt = new Date().toISOString(), appVersion = '2.3.1' } = {}) {
   return validateUserBackup({ format: FORMAT, version: VERSION, createdAt, appVersion, data });
 }
 

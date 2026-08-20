@@ -4,6 +4,14 @@ All notable changes to Ultimate Animation Index are documented here.
 
 ## Unreleased
 
+## [2.3.1] - 2026-08-20
+
+### Fixed
+
+- Restored the complete Master-style filter toolbar in Adult: quality tier, format, genre and watch status now sit alongside Adult search, sorting and order.
+- Kept Adult filters independent from Master, persistent across refreshes and included in private backup/import.
+- Refreshed the Adult interface cache key so installed sites immediately load the complete toolbar.
+
 ## [2.3.0] - 2026-08-20
 
 ### Added

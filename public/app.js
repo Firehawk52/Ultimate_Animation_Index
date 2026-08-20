@@ -8,7 +8,7 @@ import {
 
 (async () => {
   'use strict';
-  const APP_VERSION = '2.3.0';
+  const APP_VERSION = '2.3.1';
   const catalogResponse = await fetch('catalog.json');
   if (!catalogResponse.ok) throw new Error(`Could not load catalog (${catalogResponse.status})`);
   const CAT = await catalogResponse.json();
@@ -235,6 +235,21 @@ import {
         ...new Set(items.flatMap((x) => (x.genres || '').split(',').map((g) => g.trim())).filter(Boolean)),
       ].sort(),
     );
+    populateAdultFilters();
+  }
+  function populateAdultFilters() {
+    const items = adultFilterItems();
+    fill(
+      $('#adultTierFilter'),
+      [...new Set(items.map((x) => x.tier).filter(Boolean))].sort(
+        (a, b) =>
+          ['S+', 'S', 'A+', 'A', 'B+', 'B', 'CUSTOM'].indexOf(a) -
+          ['S+', 'S', 'A+', 'A', 'B+', 'B', 'CUSTOM'].indexOf(b),
+      ),
+      (tier) => qualityRatingLabel(tier, state.ratingFormat, { suffix: state.ratingFormat === 'ten' }),
+    );
+    fill($('#adultTypeFilter'), [...new Set(items.map(displayType).filter(Boolean))].sort());
+    fill($('#adultGenreFilter'), [...new Set(items.flatMap(liveGenres).filter(Boolean))].sort());
   }
   function fill(sel, vals, label = (value) => value) {
     const selected = sel.value;
@@ -298,6 +313,10 @@ import {
     'statusFilter',
     'sortSelect',
     'adultSearch',
+    'adultTierFilter',
+    'adultTypeFilter',
+    'adultGenreFilter',
+    'adultStatusFilter',
     'adultSort',
     'collectionSearch',
     'franchiseSearch',
@@ -592,7 +611,11 @@ import {
       .sort((a, b) => (a.rank ?? 999999) - (b.rank ?? 999999));
   }
   function filteredAdult() {
-    const q = $('#adultSearch').value.trim().toLowerCase();
+    const q = $('#adultSearch').value.trim().toLowerCase(),
+      tier = $('#adultTierFilter').value,
+      type = $('#adultTypeFilter').value,
+      genre = $('#adultGenreFilter').value,
+      status = $('#adultStatusFilter').value;
     const filtered = adultFilterItems().filter((x) => {
       if (!q) return true;
       const m = meta[x.id]?.data || {};
@@ -600,8 +623,15 @@ import {
         `${x.title} ${(x.aliases || []).join(' ')} ${x.genres || ''} ${x.editorial_note || x.why || ''} ${m.studio || ''}`.toLowerCase();
       return hay.includes(q);
     });
+    const narrowed = filtered.filter((x) => {
+      if (tier && x.tier !== tier) return false;
+      if (type && displayType(x) !== type) return false;
+      if (genre && !liveGenres(x).includes(genre)) return false;
+      if (status && pFor(x.id).status !== status) return false;
+      return true;
+    });
     const sort = titleSortModes.includes($('#adultSort').value) ? $('#adultSort').value : 'rank';
-    return sortTitleItems(filtered, sort, state.adultSortOrder);
+    return sortTitleItems(narrowed, sort, state.adultSortOrder);
   }
   function updateAdultChipCounts() {
     const labels = {
@@ -2853,6 +2883,12 @@ import {
     saveUIState();
     renderAdult();
   });
+  ['adultTierFilter', 'adultTypeFilter', 'adultGenreFilter', 'adultStatusFilter'].forEach((id) =>
+    $('#' + id).addEventListener('change', () => {
+      saveUIState();
+      renderAdult();
+    }),
+  );
   $('#adultSort').addEventListener('change', () => {
     saveUIState();
     renderAdult();
@@ -2896,6 +2932,7 @@ import {
       $$('.adult-chip').forEach((x) => x.classList.remove('active'));
       b.classList.add('active');
       state.adult = b.dataset.adult;
+      populateAdultFilters();
       saveUIState();
       renderAdult();
     }),

@@ -17,7 +17,7 @@
       href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:ital,wght@0,600;0,700;0,800;1,700&family=Space+Grotesk:wght@400;500;600;700&display=swap"
       rel="stylesheet"
     />
-    <link rel="stylesheet" href="styles.css?v=2.3.0-library-settings-1" />
+    <link rel="stylesheet" href="styles.css?v=2.3.1-adult-filters-1" />
   </head>
   <body>
     <a class="skip-link" href="#mainContent">Skip to content</a>
@@ -234,6 +234,23 @@
               autocomplete="off"
             />
           </div>
+          <select id="adultTierFilter" aria-label="Adult quality tier">
+            <option value="">ALL TIERS</option>
+          </select>
+          <select id="adultTypeFilter" aria-label="Adult format">
+            <option value="">ALL FORMATS</option>
+          </select>
+          <select id="adultGenreFilter" aria-label="Adult genre">
+            <option value="">ALL GENRES</option>
+          </select>
+          <select id="adultStatusFilter" aria-label="Adult watch status">
+            <option value="">ALL STATUS</option>
+            <option>Not started</option>
+            <option>Watching</option>
+            <option>Completed</option>
+            <option>On hold</option>
+            <option>Dropped</option>
+          </select>
           <select id="adultSort" aria-label="Sort Adult titles by">
             <option value="rank">MASTER RANK</option>
             <option value="overall">OVERALL SCORE</option>
@@ -534,6 +551,6 @@
     </dialog>
 
     <div class="toast" id="toast" popover="manual"></div>
-    <script type="module" src="app.js?v=2.3.0-rating-onboarding-3"></script>
+    <script type="module" src="app.js?v=2.3.1-adult-filters-1"></script>
   </body>
 </html>
